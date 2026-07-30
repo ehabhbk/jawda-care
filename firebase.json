@@ -1,0 +1,26 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "jawda-care",
+          "appId": "1:320333821419:android:9d6e337634c1a9e29f55ae",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "jawda-care",
+          "configurations": {
+            "android": "1:320333821419:android:9d6e337634c1a9e29f55ae",
+            "ios": "1:320333821419:ios:6da03b8eb1ad0f379f55ae",
+            "web": "1:320333821419:web:b64602ca6c52a1ae9f55ae"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}

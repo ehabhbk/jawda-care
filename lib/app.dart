@@ -1,0 +1,126 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:provider/provider.dart';
+import 'core/routes/app_routes.dart';
+import 'core/theme/app_theme.dart';
+import 'l10n/localization.dart';
+import 'presentation/providers/language_provider.dart';
+import 'presentation/screens/splash/splash_screen.dart';
+import 'presentation/screens/auth/login_screen.dart';
+import 'presentation/screens/auth/register_screen.dart';
+import 'presentation/screens/auth/email_verification_screen.dart';
+import 'presentation/screens/auth/forgot_password_screen.dart';
+import 'presentation/screens/home/home_screen.dart';
+import 'presentation/screens/icu/icu_list_screen.dart';
+import 'presentation/screens/icu/icu_booking_screen.dart';
+import 'presentation/screens/ambulance/ambulance_booking_screen.dart';
+import 'presentation/screens/ambulance/ambulance_tracking_screen.dart';
+import 'presentation/screens/bookings/my_bookings_screen.dart';
+import 'presentation/screens/bookings/booking_details_screen.dart';
+import 'presentation/screens/profile/profile_screen.dart';
+import 'presentation/screens/profile/edit_profile_screen.dart';
+import 'presentation/screens/admin/admin_dashboard_screen.dart';
+import 'presentation/screens/admin/add_hospital_screen.dart';
+import 'presentation/screens/admin/add_ambulance_screen.dart';
+import 'presentation/screens/admin/add_admin_screen.dart';
+import 'presentation/screens/hospital/hospital_dashboard_screen.dart';
+import 'presentation/screens/hospital/manage_departments_screen.dart';
+import 'presentation/screens/hospital/manage_beds_screen.dart';
+import 'presentation/screens/hospital/booking_requests_screen.dart';
+import 'presentation/screens/driver/driver_dashboard_screen.dart';
+import 'presentation/screens/driver/driver_trip_screen.dart';
+
+class JawdaCareApp extends StatelessWidget {
+  const JawdaCareApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
+
+    return MaterialApp(
+      title: 'Jawda Care',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      locale: lang.locale,
+      supportedLocales: const [Locale('en'), Locale('ar')],
+      localizationsDelegates: [
+        AppLocalization.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ],
+      localeResolutionCallback: (locale, supportedLocales) {
+        for (final supported in supportedLocales) {
+          if (supported.languageCode == locale?.languageCode) {
+            return supported;
+          }
+        }
+        return supportedLocales.first;
+      },
+      initialRoute: AppRoutes.splash,
+      onGenerateRoute: (settings) {
+        final args = settings.arguments;
+
+        switch (settings.name) {
+          case AppRoutes.splash:
+            return MaterialPageRoute(builder: (_) => const SplashScreen());
+          case AppRoutes.login:
+            return MaterialPageRoute(builder: (_) => const LoginScreen());
+          case AppRoutes.register:
+            return MaterialPageRoute(builder: (_) => const RegisterScreen());
+          case AppRoutes.emailVerification:
+            return MaterialPageRoute(builder: (_) => const EmailVerificationScreen());
+          case AppRoutes.forgotPassword:
+            return MaterialPageRoute(builder: (_) => const ForgotPasswordScreen());
+          case AppRoutes.home:
+            return MaterialPageRoute(builder: (_) => const HomeScreen());
+          case AppRoutes.icuList:
+            return MaterialPageRoute(builder: (_) => const IcuListScreen());
+          case AppRoutes.icuBooking:
+            return MaterialPageRoute(builder: (_) => const IcuBookingScreen());
+          case AppRoutes.ambulanceBooking:
+            return MaterialPageRoute(builder: (_) => const AmbulanceBookingScreen());
+          case AppRoutes.ambulanceTracking:
+            final bookingId = args as String;
+            return MaterialPageRoute(builder: (_) => AmbulanceTrackingScreen(bookingId: bookingId));
+          case AppRoutes.myBookings:
+            return MaterialPageRoute(builder: (_) => const MyBookingsScreen());
+          case AppRoutes.bookingDetails:
+            return MaterialPageRoute(builder: (_) => const BookingDetailsScreen());
+          case AppRoutes.profile:
+            return MaterialPageRoute(builder: (_) => const ProfileScreen());
+          case AppRoutes.editProfile:
+            return MaterialPageRoute(builder: (_) => const EditProfileScreen());
+          case AppRoutes.adminDashboard:
+            return MaterialPageRoute(builder: (_) => const AdminDashboardScreen());
+          case AppRoutes.addHospital:
+            return MaterialPageRoute(builder: (_) => const AddHospitalScreen());
+          case AppRoutes.addAmbulance:
+            return MaterialPageRoute(builder: (_) => const AddAmbulanceScreen());
+          case AppRoutes.addAdmin:
+            return MaterialPageRoute(builder: (_) => const AddAdminScreen());
+          case AppRoutes.hospitalDashboard:
+            return MaterialPageRoute(builder: (_) => const HospitalDashboardScreen());
+          case AppRoutes.manageDepartments:
+            return MaterialPageRoute(builder: (_) => const ManageDepartmentsScreen());
+          case AppRoutes.manageBeds:
+            return MaterialPageRoute(builder: (_) => const ManageBedsScreen());
+          case AppRoutes.bookingRequests:
+            return MaterialPageRoute(builder: (_) => const BookingRequestsScreen());
+          case AppRoutes.driverDashboard:
+            return MaterialPageRoute(builder: (_) => const DriverDashboardScreen());
+          case AppRoutes.driverTrip:
+            final tripArgs = args as Map<String, dynamic>;
+            return MaterialPageRoute(
+              builder: (_) => DriverTripScreen(
+                bookingId: tripArgs['bookingId'],
+                ambulanceId: tripArgs['ambulanceId'],
+              ),
+            );
+          default:
+            return MaterialPageRoute(builder: (_) => const SplashScreen());
+        }
+      },
+    );
+  }
+}
