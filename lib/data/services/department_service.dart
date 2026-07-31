@@ -8,13 +8,14 @@ class DepartmentService {
     return _firestore
         .collection('departments')
         .where('hospitalId', isEqualTo: hospitalId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => DepartmentModel.fromMap(doc.data(), doc.id))
-          .toList();
-    });
+          final list = snapshot.docs
+              .map((doc) => DepartmentModel.fromMap(doc.data(), doc.id))
+              .toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   Future<void> addDepartment(DepartmentModel department) async {

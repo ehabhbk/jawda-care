@@ -5,7 +5,9 @@ class IcuService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Stream<List<IcuModel>> getAvailableIcus({String? hospitalId}) {
-    Query query = _firestore.collection('icus').where('isAvailable', isEqualTo: true);
+    Query query = _firestore
+        .collection('icus')
+        .where('isAvailable', isEqualTo: true);
 
     if (hospitalId != null) {
       query = query.where('hospitalId', isEqualTo: hospitalId);
@@ -26,7 +28,11 @@ class IcuService {
     }
 
     final snapshot = await query.get();
-    return snapshot.docs.map((doc) => IcuModel.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
+    return snapshot.docs
+        .map(
+          (doc) => IcuModel.fromMap(doc.data() as Map<String, dynamic>, doc.id),
+        )
+        .toList();
   }
 
   Future<IcuModel?> getIcuById(String icuId) async {
@@ -48,19 +54,33 @@ class IcuService {
     String? city,
     double? maxPrice,
   }) async {
-    Query query = _firestore.collection('icus').where('isAvailable', isEqualTo: true);
-
-    if (city != null) {
-      query = query.where('hospitalName', isEqualTo: city);
-    }
+    Query query = _firestore
+        .collection('icus')
+        .where('isAvailable', isEqualTo: true);
 
     final snapshot = await query.get();
-    var icus = snapshot.docs.map((doc) => IcuModel.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
+    var icus = snapshot.docs
+        .map(
+          (doc) => IcuModel.fromMap(doc.data() as Map<String, dynamic>, doc.id),
+        )
+        .toList();
+
+    if (city != null) {
+      icus = icus
+          .where((i) => i.hospitalName == city || i.hospitalNameAr == city)
+          .toList();
+    }
 
     if (hospitalName != null) {
-      icus = icus.where((i) =>
-          i.hospitalName.toLowerCase().contains(hospitalName.toLowerCase()) ||
-          i.hospitalNameAr.contains(hospitalName)).toList();
+      icus = icus
+          .where(
+            (i) =>
+                i.hospitalName.toLowerCase().contains(
+                  hospitalName.toLowerCase(),
+                ) ||
+                i.hospitalNameAr.contains(hospitalName),
+          )
+          .toList();
     }
 
     if (maxPrice != null) {

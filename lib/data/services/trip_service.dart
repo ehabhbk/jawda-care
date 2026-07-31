@@ -16,26 +16,32 @@ class TripService {
         .limit(1)
         .snapshots()
         .map((snapshot) {
-      if (snapshot.docs.isNotEmpty) {
-        return TripModel.fromMap(snapshot.docs.first.data(), snapshot.docs.first.id);
-      }
-      return null;
-    });
+          if (snapshot.docs.isNotEmpty) {
+            return TripModel.fromMap(
+              snapshot.docs.first.data(),
+              snapshot.docs.first.id,
+            );
+          }
+          return null;
+        });
   }
 
   Stream<TripModel?> getTripByDriverId(String driverId) {
     return _firestore
         .collection('trips')
         .where('driverId', isEqualTo: driverId)
-        .where('status', whereIn: ['heading_to_patient', 'picked_up', 'in_transit'])
-        .limit(1)
         .snapshots()
         .map((snapshot) {
-      if (snapshot.docs.isNotEmpty) {
-        return TripModel.fromMap(snapshot.docs.first.data(), snapshot.docs.first.id);
-      }
-      return null;
-    });
+          for (final doc in snapshot.docs) {
+            final trip = TripModel.fromMap(doc.data(), doc.id);
+            if (trip.status == 'heading_to_patient' ||
+                trip.status == 'picked_up' ||
+                trip.status == 'in_transit') {
+              return trip;
+            }
+          }
+          return null;
+        });
   }
 
   Future<void> updateDriverLocation({
@@ -53,9 +59,7 @@ class TripService {
     required String tripId,
     required String status,
   }) async {
-    final data = <String, dynamic>{
-      'status': status,
-    };
+    final data = <String, dynamic>{'status': status};
     final now = DateTime.now().toIso8601String();
     switch (status) {
       case 'picked_up':

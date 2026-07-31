@@ -15,6 +15,7 @@ class BedProvider extends ChangeNotifier {
 
   void loadBedsByDepartment(String departmentId) {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     _bedService.getBedsByDepartment(departmentId).listen((beds) {
@@ -90,6 +91,7 @@ class BedProvider extends ChangeNotifier {
   }
 
   void loadAvailableBeds(String hospitalId) {
+    _errorMessage = null;
     _bedService.getAvailableBedsByHospital(hospitalId).listen((beds) {
       _beds = beds;
       _isLoading = false;

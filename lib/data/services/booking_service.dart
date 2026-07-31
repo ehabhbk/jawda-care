@@ -8,67 +8,72 @@ class BookingService {
     return _firestore
         .collection('bookings')
         .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return BookingModel.fromMap(doc.data(), doc.id);
-      }).toList();
-    });
+          final list = snapshot.docs.map((doc) {
+            return BookingModel.fromMap(doc.data(), doc.id);
+          }).toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   Stream<List<BookingModel>> getHospitalBookings(String hospitalId) {
     return _firestore
         .collection('bookings')
         .where('hospitalId', isEqualTo: hospitalId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return BookingModel.fromMap(doc.data(), doc.id);
-      }).toList();
-    });
+          final list = snapshot.docs.map((doc) {
+            return BookingModel.fromMap(doc.data(), doc.id);
+          }).toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   Stream<List<BookingModel>> getDriverBookings(String driverId) {
     return _firestore
         .collection('bookings')
         .where('driverId', isEqualTo: driverId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return BookingModel.fromMap(doc.data(), doc.id);
-      }).toList();
-    });
+          final list = snapshot.docs.map((doc) {
+            return BookingModel.fromMap(doc.data(), doc.id);
+          }).toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   Stream<List<BookingModel>> getPendingHospitalBookings(String hospitalId) {
     return _firestore
         .collection('bookings')
         .where('hospitalId', isEqualTo: hospitalId)
-        .where('status', isEqualTo: 'pending')
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return BookingModel.fromMap(doc.data(), doc.id);
-      }).toList();
-    });
+          final list = snapshot.docs
+              .map((doc) => BookingModel.fromMap(doc.data(), doc.id))
+              .where((booking) => booking.status == BookingStatus.pending)
+              .toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   Stream<List<BookingModel>> getPendingDriverBookings() {
     return _firestore
         .collection('bookings')
         .where('status', isEqualTo: 'accepted')
-        .where('ambulanceId', isNull: true)
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return BookingModel.fromMap(doc.data(), doc.id);
-      }).toList();
-    });
+          final list = snapshot.docs
+              .map((doc) => BookingModel.fromMap(doc.data(), doc.id))
+              .where((booking) => booking.ambulanceId == null)
+              .toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   Future<String> createBooking(BookingModel booking) async {

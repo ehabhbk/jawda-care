@@ -8,26 +8,27 @@ class BedService {
     return _firestore
         .collection('beds')
         .where('departmentId', isEqualTo: departmentId)
-        .orderBy('createdAt', descending: false)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => BedModel.fromMap(doc.data(), doc.id))
-          .toList();
-    });
+          final list = snapshot.docs
+              .map((doc) => BedModel.fromMap(doc.data(), doc.id))
+              .toList();
+          list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+          return list;
+        });
   }
 
   Stream<List<BedModel>> getAvailableBedsByHospital(String hospitalId) {
     return _firestore
         .collection('beds')
         .where('hospitalId', isEqualTo: hospitalId)
-        .where('status', isEqualTo: 'available')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => BedModel.fromMap(doc.data(), doc.id))
-          .toList();
-    });
+          return snapshot.docs
+              .map((doc) => BedModel.fromMap(doc.data(), doc.id))
+              .where((bed) => bed.status == 'available')
+              .toList();
+        });
   }
 
   Future<void> addBed(BedModel bed) async {
@@ -52,9 +53,7 @@ class BedService {
     String? patientId,
     String? bookingId,
   }) async {
-    final data = <String, dynamic>{
-      'status': status,
-    };
+    final data = <String, dynamic>{'status': status};
     if (patientName != null) data['patientName'] = patientName;
     if (patientId != null) data['patientId'] = patientId;
     if (bookingId != null) data['bookingId'] = bookingId;

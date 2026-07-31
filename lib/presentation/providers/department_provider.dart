@@ -15,6 +15,7 @@ class DepartmentProvider extends ChangeNotifier {
 
   void loadDepartments(String hospitalId) {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     _departmentService.getDepartments(hospitalId).listen((departments) {
