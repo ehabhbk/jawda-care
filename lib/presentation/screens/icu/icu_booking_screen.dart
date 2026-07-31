@@ -61,9 +61,13 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
       final bedSnap = await FirebaseFirestore.instance
           .collection('beds')
           .where('departmentId', isEqualTo: dept['id'])
-          .where('status', isEqualTo: 'available')
           .get();
-      bedsMap[dept['id']] = bedSnap.docs.map((b) => {'id': b.id, 'name': b['name'], 'nameAr': b['nameAr']}).toList();
+      bedsMap[dept['id']] = bedSnap.docs.map((b) => {
+        'id': b.id,
+        'name': b['name'],
+        'nameAr': b['nameAr'],
+        'status': b['status'] ?? 'available',
+      }).toList();
     }
 
     if (mounted) setState(() {
@@ -72,6 +76,12 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
       _beds = bedsMap;
       _loading = false;
     });
+  }
+
+  List<Map<String, dynamic>> _visibleBeds(String deptId) {
+    return (_beds[deptId] ?? [])
+        .where((b) => b['status'] != 'maintenance')
+        .toList();
   }
 
   Future<void> _showBookingDialog() async {
@@ -256,45 +266,66 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
                   const SizedBox(height: 16),
                   Text(isAr ? 'اختر القسم' : 'Select Department', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  ..._departments.map((d) => Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: RadioListTile<String>(
-                      title: Text(d['nameAr'] ?? d['name'], style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Row(
-                        children: [
-                          const Icon(Icons.bed, size: 16, color: Colors.teal),
-                          const SizedBox(width: 4),
-                          Text('${(_beds[d['id']] ?? []).length} ${isAr ? "أسرة متاحة" : "beds available"}'),
-                        ],
-                      ),
-                      value: d['id'],
-                      groupValue: _selectedDeptId,
-                      onChanged: (_beds[d['id']] ?? []).isEmpty ? null : (v) {
-                        setState(() {
-                          _selectedDeptId = v;
-                          _selectedBedId = null;
-                        });
-                      },
-                    ),
-                  )),
-                  if (_selectedDeptId != null && (_beds[_selectedDeptId] ?? []).isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Text(isAr ? 'اختر السرير' : 'Select Bed', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    ...(_beds[_selectedDeptId] ?? []).map((b) => Card(
+                  ..._departments.map((d) {
+                    final deptBeds = _beds[d['id']] ?? [];
+                    final availableCount = deptBeds.where((b) => b['status'] == 'available').length;
+                    return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: RadioListTile<String>(
-                        title: Text(b['nameAr'] ?? b['name']),
-                        value: b['id'],
-                        groupValue: _selectedBedId,
-                        onChanged: (v) {
+                        title: Text(d['nameAr'] ?? d['name'], style: const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Row(
+                          children: [
+                            const Icon(Icons.bed, size: 16, color: Colors.teal),
+                            const SizedBox(width: 4),
+                            Text('$availableCount ${isAr ? "أسرة متاحة" : "beds available"}'),
+                          ],
+                        ),
+                        value: d['id'],
+                        groupValue: _selectedDeptId,
+                        onChanged: availableCount == 0 ? null : (v) {
                           setState(() {
-                            _selectedBedId = v;
-                            _selectedBedName = b['name'];
-                            _selectedBedNameAr = b['nameAr'];
+                            _selectedDeptId = v;
+                            _selectedBedId = null;
                           });
                         },
                       ),
+                    );
+                  }),
+                  if (_selectedDeptId != null) ...[
+                    if (_visibleBeds(_selectedDeptId!).isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Text(isAr ? 'اختر السرير' : 'Select Bed', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                    ],
+                    ..._visibleBeds(_selectedDeptId!).map((b) => Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: b['status'] == 'occupied'
+                          ? ListTile(
+                              title: Text(b['nameAr'] ?? b['name'], style: const TextStyle(color: Colors.grey)),
+                              subtitle: Row(
+                                children: [
+                                  Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(isAr ? 'مشغول - لا يمكن الحجز' : 'Occupied - cannot book', style: const TextStyle(color: Colors.orange)),
+                                ],
+                              ),
+                            )
+                          : RadioListTile<String>(
+                              title: Text(b['nameAr'] ?? b['name']),
+                              value: b['id'],
+                              groupValue: _selectedBedId,
+                              onChanged: (v) {
+                                setState(() {
+                                  _selectedBedId = v;
+                                  _selectedBedName = b['name'];
+                                  _selectedBedNameAr = b['nameAr'];
+                                });
+                              },
+                            ),
                     )),
                   ],
                   const SizedBox(height: 24),

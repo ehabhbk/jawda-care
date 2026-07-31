@@ -49,6 +49,20 @@ class BedProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateBedName({
+    required String bedId,
+    required String name,
+    required String nameAr,
+  }) async {
+    try {
+      await _bedService.updateBed(bedId: bedId, name: name, nameAr: nameAr);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    }
+  }
+
   Future<void> updateBedStatus({
     required String bedId,
     required String status,
@@ -65,8 +79,14 @@ class BedProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> deleteBed(String bedId) async {
-    await _bedService.deleteBed(bedId);
+  Future<bool> deleteBed(String bedId) async {
+    try {
+      await _bedService.deleteBed(bedId);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    }
   }
 
   void loadAvailableBeds(String hospitalId) {

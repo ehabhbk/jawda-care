@@ -34,6 +34,17 @@ class BedService {
     await _firestore.collection('beds').add(bed.toMap());
   }
 
+  Future<void> updateBed({
+    required String bedId,
+    required String name,
+    required String nameAr,
+  }) async {
+    await _firestore.collection('beds').doc(bedId).update({
+      'name': name,
+      'nameAr': nameAr,
+    });
+  }
+
   Future<void> updateBedStatus({
     required String bedId,
     required String status,

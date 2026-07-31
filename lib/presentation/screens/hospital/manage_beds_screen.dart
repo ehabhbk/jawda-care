@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/department_provider.dart';
 import '../../providers/bed_provider.dart';
+import '../../../data/models/bed_model.dart';
 
 class ManageBedsScreen extends StatefulWidget {
   const ManageBedsScreen({super.key});
@@ -73,6 +74,67 @@ class _ManageBedsScreenState extends State<ManageBedsScreen> {
         ],
       ),
     );
+  }
+
+  void _showEditDialog(String bedId, String currentName, String currentNameAr) {
+    _nameCtrl.text = currentName;
+    _nameArCtrl.text = currentNameAr;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تعديل السرير'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _nameCtrl,
+              decoration: const InputDecoration(labelText: 'اسم السرير (English)'),
+            ),
+            TextField(
+              controller: _nameArCtrl,
+              decoration: const InputDecoration(labelText: 'اسم السرير (عربي)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () async {
+              final provider = context.read<BedProvider>();
+              await provider.updateBedName(
+                bedId: bedId,
+                name: _nameCtrl.text,
+                nameAr: _nameArCtrl.text,
+              );
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('حفظ'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteBed(BedModel bed) async {
+    final name = bed.nameAr.isNotEmpty ? bed.nameAr : bed.name;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف السرير'),
+        content: Text('هل أنت متأكد من حذف السرير "$name"؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('حذف', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await context.read<BedProvider>().deleteBed(bed.id!);
+    }
   }
 
   void _showStatusDialog(String bedId, String currentStatus) {
@@ -173,7 +235,7 @@ class _ManageBedsScreenState extends State<ManageBedsScreen> {
                               statusText = 'صيانة';
                               break;
                             case 'occupied':
-                              statusColor = Colors.red;
+                              statusColor = Colors.orange;
                               statusText = 'مشغول - ${bed.patientName ?? ""}';
                               break;
                             default:
@@ -195,14 +257,19 @@ class _ManageBedsScreenState extends State<ManageBedsScreen> {
                                       shape: BoxShape.circle,
                                     ),
                                   ),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blue),
+                                    onPressed: () => _showEditDialog(bed.id!, bed.name, bed.nameAr),
+                                  ),
                                   if (bed.status != 'occupied')
                                     IconButton(
-                                      icon: const Icon(Icons.edit, color: Colors.blue),
+                                      icon: const Icon(Icons.build_circle, color: Colors.orange),
+                                      tooltip: 'تغيير الحالة',
                                       onPressed: () => _showStatusDialog(bed.id!, bed.status),
                                     ),
                                   IconButton(
                                     icon: const Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => bedProvider.deleteBed(bed.id!),
+                                    onPressed: () => _confirmDeleteBed(bed),
                                   ),
                                 ],
                               ),

@@ -21,7 +21,31 @@ class DepartmentService {
     await _firestore.collection('departments').add(department.toMap());
   }
 
+  Future<void> updateDepartment({
+    required String departmentId,
+    required String name,
+    required String nameAr,
+  }) async {
+    await _firestore.collection('departments').doc(departmentId).update({
+      'name': name,
+      'nameAr': nameAr,
+    });
+  }
+
   Future<void> deleteDepartment(String departmentId) async {
     await _firestore.collection('departments').doc(departmentId).delete();
+  }
+
+  Future<void> deleteDepartmentWithBeds(String departmentId) async {
+    final beds = await _firestore
+        .collection('beds')
+        .where('departmentId', isEqualTo: departmentId)
+        .get();
+    final batch = _firestore.batch();
+    for (final bed in beds.docs) {
+      batch.delete(bed.reference);
+    }
+    batch.delete(_firestore.collection('departments').doc(departmentId));
+    await batch.commit();
   }
 }

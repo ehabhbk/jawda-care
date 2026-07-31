@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/department_provider.dart';
+import '../../../data/models/department_model.dart';
 
 class ManageDepartmentsScreen extends StatefulWidget {
   const ManageDepartmentsScreen({super.key});
@@ -32,6 +33,8 @@ class _ManageDepartmentsScreenState extends State<ManageDepartmentsScreen> {
   }
 
   void _showAddDialog() {
+    _nameCtrl.clear();
+    _nameArCtrl.clear();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -71,6 +74,67 @@ class _ManageDepartmentsScreenState extends State<ManageDepartmentsScreen> {
     );
   }
 
+  void _showEditDialog(String deptId, String currentName, String currentNameAr) {
+    _nameCtrl.text = currentName;
+    _nameArCtrl.text = currentNameAr;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تعديل القسم'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _nameCtrl,
+              decoration: const InputDecoration(labelText: 'الاسم (English)'),
+            ),
+            TextField(
+              controller: _nameArCtrl,
+              decoration: const InputDecoration(labelText: 'الاسم (عربي)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () async {
+              final provider = context.read<DepartmentProvider>();
+              await provider.updateDepartment(
+                departmentId: deptId,
+                name: _nameCtrl.text,
+                nameAr: _nameArCtrl.text,
+              );
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('حفظ'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteDepartment(DepartmentModel dept) async {
+    final name = dept.nameAr.isNotEmpty ? dept.nameAr : dept.name;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف القسم'),
+        content: Text('هل أنت متأكد من حذف قسم "$name"؟ سيتم حذف جميع الأسرة التابعة له.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('حذف', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await context.read<DepartmentProvider>().deleteDepartmentWithBeds(dept.id!);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DepartmentProvider>();
@@ -95,9 +159,18 @@ class _ManageDepartmentsScreenState extends State<ManageDepartmentsScreen> {
                     return Card(
                       child: ListTile(
                         title: Text(dept.nameAr.isNotEmpty ? dept.nameAr : dept.name),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => provider.deleteDepartment(dept.id!),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () => _showEditDialog(dept.id!, dept.name, dept.nameAr),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _confirmDeleteDepartment(dept),
+                            ),
+                          ],
                         ),
                       ),
                     );

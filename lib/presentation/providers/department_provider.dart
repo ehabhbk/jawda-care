@@ -47,8 +47,42 @@ class DepartmentProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteDepartment(String departmentId) async {
-    await _departmentService.deleteDepartment(departmentId);
+  Future<bool> updateDepartment({
+    required String departmentId,
+    required String name,
+    required String nameAr,
+  }) async {
+    try {
+      await _departmentService.updateDepartment(
+        departmentId: departmentId,
+        name: name,
+        nameAr: nameAr,
+      );
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    }
+  }
+
+  Future<bool> deleteDepartment(String departmentId) async {
+    try {
+      await _departmentService.deleteDepartment(departmentId);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    }
+  }
+
+  Future<bool> deleteDepartmentWithBeds(String departmentId) async {
+    try {
+      await _departmentService.deleteDepartmentWithBeds(departmentId);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    }
   }
 
   void clearError() {
