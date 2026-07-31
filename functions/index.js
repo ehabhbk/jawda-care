@@ -62,6 +62,33 @@ async function getDriverTokensForAmbulance(ambulanceId) {
   }
 }
 
+async function getAvailableDriverTokens() {
+  const tokens = [];
+  try {
+    const ambSnap = await db
+      .collection('ambulances')
+      .where('status', '==', 'available')
+      .get();
+    const driverEmails = [];
+    ambSnap.forEach((d) => {
+      if (d.data().driverEmail) driverEmails.push(d.data().driverEmail);
+    });
+    if (driverEmails.length === 0) return tokens;
+
+    const userSnap = await db
+      .collection('users')
+      .where('email', 'in', driverEmails.slice(0, 10))
+      .get();
+    userSnap.forEach((d) => {
+      if (d.data().fcmToken) tokens.push(d.data().fcmToken);
+    });
+    return tokens;
+  } catch (e) {
+    console.error('getAvailableDriverTokens failed', e);
+    return [];
+  }
+}
+
 async function sendPush(tokens, title, body, data) {
   if (!tokens || tokens.length === 0) return;
   try {
@@ -99,6 +126,14 @@ exports.sendBookingNotifications = onDocumentWritten(
           'طلب حجز سرير جديد',
           `${afterData.userName || ''} طلب حجز سرير في ${afterData.hospitalName || 'المستشفى'}`,
           { bookingId, type: 'icu', status }
+        );
+      } else if (type === 'ambulance') {
+        const tokens = await getAvailableDriverTokens();
+        await sendPush(
+          tokens,
+          'طلب إسعاف جديد',
+          `${afterData.userName || ''} يطلب سيارة إسعاف. افتح لوحة التحكم لقبول الطلب.`,
+          { bookingId, type: 'ambulance', status }
         );
       }
       return;

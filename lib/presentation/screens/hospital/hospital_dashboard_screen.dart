@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../widgets/common/theme_toggle_button.dart';
 import '../auth/login_screen.dart';
 
 class HospitalDashboardScreen extends StatelessWidget {
@@ -17,6 +18,7 @@ class HospitalDashboardScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(hospital?.nameAr ?? 'لوحة تحكم المستشفى'),
         actions: [
+          const ThemeToggleButton(),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
@@ -44,18 +46,39 @@ class HospitalDashboardScreen extends StatelessWidget {
                     .snapshots(),
                 builder: (ctx, snap) {
                   if (!snap.hasData) {
-                    return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()));
+                    return const SizedBox(
+                      height: 100,
+                      child: Center(child: CircularProgressIndicator()),
+                    );
                   }
                   final bookings = snap.data!.docs;
                   final total = bookings.length;
-                  final icu = bookings.where((d) => (d.data() as Map)['bookingType'] == 'icu').length;
-                  final ambulance = bookings.where((d) => (d.data() as Map)['bookingType'] == 'ambulance').length;
-                  final pending = bookings.where((d) => (d.data() as Map)['status'] == 'pending').length;
-                  final accepted = bookings.where((d) => (d.data() as Map)['status'] == 'accepted').length;
-                  final inProgress = bookings.where((d) => (d.data() as Map)['status'] == 'inProgress').length;
-                  final completed = bookings.where((d) => (d.data() as Map)['status'] == 'completed').length;
-                  final cancelled = bookings.where((d) => (d.data() as Map)['status'] == 'cancelled').length;
-                  final rejected = bookings.where((d) => (d.data() as Map)['status'] == 'rejected').length;
+                  final icu = bookings
+                      .where((d) => (d.data() as Map)['bookingType'] == 'icu')
+                      .length;
+                  final ambulance = bookings
+                      .where(
+                        (d) => (d.data() as Map)['bookingType'] == 'ambulance',
+                      )
+                      .length;
+                  final pending = bookings
+                      .where((d) => (d.data() as Map)['status'] == 'pending')
+                      .length;
+                  final accepted = bookings
+                      .where((d) => (d.data() as Map)['status'] == 'accepted')
+                      .length;
+                  final inProgress = bookings
+                      .where((d) => (d.data() as Map)['status'] == 'inProgress')
+                      .length;
+                  final completed = bookings
+                      .where((d) => (d.data() as Map)['status'] == 'completed')
+                      .length;
+                  final cancelled = bookings
+                      .where((d) => (d.data() as Map)['status'] == 'cancelled')
+                      .length;
+                  final rejected = bookings
+                      .where((d) => (d.data() as Map)['status'] == 'rejected')
+                      .length;
 
                   return Column(
                     children: [
@@ -63,11 +86,32 @@ class HospitalDashboardScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Expanded(child: _StatCard(icon: Icons.medical_services, label: 'حجوزات أسرة', value: '$icu', color: Colors.teal)),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.medical_services,
+                              label: 'حجوزات أسرة',
+                              value: '$icu',
+                              color: Colors.teal,
+                            ),
+                          ),
                           const SizedBox(width: 8),
-                          Expanded(child: _StatCard(icon: Icons.airport_shuttle, label: 'طلبات إسعاف', value: '$ambulance', color: Colors.orange)),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.airport_shuttle,
+                              label: 'طلبات إسعاف',
+                              value: '$ambulance',
+                              color: Colors.orange,
+                            ),
+                          ),
                           const SizedBox(width: 8),
-                          Expanded(child: _StatCard(icon: Icons.receipt_long, label: 'الإجمالي', value: '$total', color: Colors.blueGrey)),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.receipt_long,
+                              label: 'الإجمالي',
+                              value: '$total',
+                              color: Colors.blueGrey,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -75,21 +119,63 @@ class HospitalDashboardScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Expanded(child: _StatCard(icon: Icons.hourglass_top, label: 'قيد الانتظار', value: '$pending', color: Colors.amber)),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.hourglass_top,
+                              label: 'قيد الانتظار',
+                              value: '$pending',
+                              color: Colors.amber,
+                            ),
+                          ),
                           const SizedBox(width: 8),
-                          Expanded(child: _StatCard(icon: Icons.check, label: 'مقبول', value: '$accepted', color: Colors.lightGreen)),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.check,
+                              label: 'مقبول',
+                              value: '$accepted',
+                              color: Colors.lightGreen,
+                            ),
+                          ),
                           const SizedBox(width: 8),
-                          Expanded(child: _StatCard(icon: Icons.sync, label: 'قيد التنفيذ', value: '$inProgress', color: Colors.blue)),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.sync,
+                              label: 'قيد التنفيذ',
+                              value: '$inProgress',
+                              color: Colors.blue,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Expanded(child: _StatCard(icon: Icons.check_circle, label: 'مكتملة', value: '$completed', color: Colors.green)),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.check_circle,
+                              label: 'مكتملة',
+                              value: '$completed',
+                              color: Colors.green,
+                            ),
+                          ),
                           const SizedBox(width: 8),
-                          Expanded(child: _StatCard(icon: Icons.cancel, label: 'ملغية', value: '$cancelled', color: Colors.grey)),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.cancel,
+                              label: 'ملغية',
+                              value: '$cancelled',
+                              color: Colors.grey,
+                            ),
+                          ),
                           const SizedBox(width: 8),
-                          Expanded(child: _StatCard(icon: Icons.block, label: 'مرفوضة', value: '$rejected', color: Colors.red)),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.block,
+                              label: 'مرفوضة',
+                              value: '$rejected',
+                              color: Colors.red,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 20),
@@ -105,7 +191,8 @@ class HospitalDashboardScreen extends StatelessWidget {
               icon: Icons.category,
               title: 'إدارة الأقسام',
               subtitle: 'إضافة أقسام العناية (مركزة - وسطى - قلبية)',
-              onTap: () => Navigator.pushNamed(context, AppRoutes.manageDepartments),
+              onTap: () =>
+                  Navigator.pushNamed(context, AppRoutes.manageDepartments),
             ),
             const SizedBox(height: 12),
             _MenuCard(
@@ -116,10 +203,19 @@ class HospitalDashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _MenuCard(
+              icon: Icons.people,
+              title: 'المرضى',
+              subtitle: 'متابعة المرضى المقيمين على الأسرة وإخراجهم',
+              onTap: () =>
+                  Navigator.pushNamed(context, AppRoutes.managePatients),
+            ),
+            const SizedBox(height: 12),
+            _MenuCard(
               icon: Icons.pending_actions,
               title: 'طلبات الحجز',
               subtitle: 'قبول أو رفض طلبات حجز الأسرة',
-              onTap: () => Navigator.pushNamed(context, AppRoutes.bookingRequests),
+              onTap: () =>
+                  Navigator.pushNamed(context, AppRoutes.bookingRequests),
             ),
           ],
         ),
@@ -134,7 +230,10 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold));
+    return Text(
+      title,
+      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    );
   }
 }
 
@@ -144,7 +243,12 @@ class _StatCard extends StatelessWidget {
   final String value;
   final Color color;
 
-  const _StatCard({required this.icon, required this.label, required this.value, required this.color});
+  const _StatCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -155,8 +259,19 @@ class _StatCard extends StatelessWidget {
           children: [
             Icon(icon, color: color, size: 24),
             const SizedBox(height: 2),
-            Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
-            Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey), textAlign: TextAlign.center),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -182,7 +297,10 @@ class _MenuCard extends StatelessWidget {
     return Card(
       child: ListTile(
         leading: Icon(icon, size: 40, color: Colors.teal),
-        title: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.arrow_forward_ios),
         onTap: onTap,

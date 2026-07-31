@@ -26,10 +26,32 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
   List<Map<String, dynamic>> _nearbyAmbulances = [];
   bool _loadingAmbulances = false;
 
+  String? _linkedIcuBookingId;
+  String? _linkedHospitalId;
+  String? _linkedHospitalName;
+  String? _linkedHospitalNameAr;
+
   @override
   void initState() {
     super.initState();
+    _readArguments();
     _getCurrentLocation();
+  }
+
+  void _readArguments() {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map<String, dynamic>) {
+      _linkedIcuBookingId = args['icuBookingId'];
+      _linkedHospitalId = args['hospitalId'];
+      _linkedHospitalName = args['hospitalName'];
+      _linkedHospitalNameAr = args['hospitalNameAr'];
+    } else if (args is BookingModel) {
+      final b = args;
+      _linkedIcuBookingId = b.id;
+      _linkedHospitalId = b.hospitalId;
+      _linkedHospitalName = b.hospitalName;
+      _linkedHospitalNameAr = b.hospitalNameAr;
+    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -47,6 +69,29 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
       CameraUpdate.newLatLngZoom(_patientLocation!, 14),
     );
     _loadNearbyAmbulances();
+    _applyLinkedDestination();
+  }
+
+  Future<void> _applyLinkedDestination() async {
+    final hospitalId = _linkedHospitalId;
+    if (hospitalId == null || _destinationLocation != null) return;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('hospitals')
+          .doc(hospitalId)
+          .get();
+      if (!doc.exists || !mounted) return;
+      final data = doc.data()!;
+      final lat = double.tryParse('${data['latitude'] ?? ''}');
+      final lng = double.tryParse('${data['longitude'] ?? ''}');
+      if (lat != null && lng != null && (lat != 0 || lng != 0)) {
+        setState(() {
+          _destinationLocation = LatLng(lat, lng);
+          _linkedHospitalName ??= data['name'];
+          _linkedHospitalNameAr ??= data['nameAr'];
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadNearbyAmbulances() async {
@@ -110,7 +155,6 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
     setState(() => _submitting = true);
     final auth = context.read<AuthProvider>();
     final booking = context.read<BookingProvider>();
-    final isAr = Localizations.localeOf(context).languageCode == 'ar';
 
     final bookingModel = BookingModel(
       userId: auth.userModel!.id!,
@@ -119,57 +163,24 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
       userLat: _patientLocation!.latitude,
       userLng: _patientLocation!.longitude,
       bookingType: BookingType.ambulance,
+      status: BookingStatus.pending,
+      destinationLat: _destinationLocation?.latitude,
+      destinationLng: _destinationLocation?.longitude,
+      icuBookingId: _linkedIcuBookingId,
+      hospitalId: _linkedHospitalId,
+      hospitalName: _linkedHospitalName,
+      hospitalNameAr: _linkedHospitalNameAr,
     );
 
     final bookingId = await booking.createBookingFromModel(bookingModel);
 
     if (bookingId != null && mounted) {
-      if (_nearbyAmbulances.isNotEmpty) {
-        final nearest = _nearbyAmbulances.first;
-        await FirebaseFirestore.instance
-            .collection('bookings')
-            .doc(bookingId)
-            .update({
-              'ambulanceId': nearest['id'],
-              'driverName': nearest['driverName'],
-              'driverPhone': nearest['driverPhone'],
-              'plateNumber': nearest['plateNumber'],
-              'status': 'accepted',
-              'destinationLat': _destinationLocation?.latitude,
-              'destinationLng': _destinationLocation?.longitude,
-            });
-        await FirebaseFirestore.instance
-            .collection('ambulances')
-            .doc(nearest['id'])
-            .update({'status': 'occupied'});
-        Navigator.of(context).pushReplacementNamed(
-          AppRoutes.ambulanceTracking,
-          arguments: bookingId,
-        );
-      } else {
-        setState(() => _submitting = false);
-        if (mounted) {
-          showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: Text(
-                isAr ? 'لا توجد سيارات إسعاف' : 'No ambulances available',
-              ),
-              content: Text(
-                isAr
-                    ? 'عذراً، لا توجد سيارات إسعاف متاحة حالياً. يرجى المحاولة لاحقاً.'
-                    : 'Sorry, no ambulances are available right now. Please try again later.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: Text(isAr ? 'حسناً' : 'OK'),
-                ),
-              ],
-            ),
-          );
-        }
-      }
+      setState(() => _submitting = false);
+      Navigator.of(
+        context,
+      ).pushReplacementNamed(AppRoutes.ambulanceTracking, arguments: bookingId);
+    } else {
+      setState(() => _submitting = false);
     }
   }
 
@@ -231,86 +242,126 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
       body: Column(
         children: [
           Expanded(
-            child: _gettingLocation
-                ? const Center(child: CircularProgressIndicator())
-                : Stack(
-                    children: [
-                      GoogleMap(
-                        mapType: MapType.satellite,
-                        initialCameraPosition: CameraPosition(
-                          target:
-                              _patientLocation ??
-                              const LatLng(24.7136, 46.6753),
-                          zoom: 14,
-                        ),
-                        onMapCreated: (ctrl) => _mapController = ctrl,
-                        onTap: (pos) {
-                          setState(() {
-                            if (_patientLocation == null) {
-                              _patientLocation = pos;
-                            } else if (_destinationLocation == null) {
-                              _destinationLocation = pos;
-                            } else {
-                              _patientLocation = pos;
-                              _destinationLocation = null;
-                              _nearbyAmbulances.clear();
-                              _loadNearbyAmbulances();
-                            }
-                          });
-                        },
-                        markers: _buildMarkers(),
-                        myLocationEnabled: true,
-                        myLocationButtonEnabled: true,
-                      ),
-                      Positioned(
-                        top: 16,
-                        left: 16,
-                        right: 16,
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  isAr
-                                      ? '📍 اضغط على الخريطة لتحديد:'
-                                      : '📍 Tap map to set:',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                if (_patientLocation == null) ...[
-                                  Text(
-                                    isAr
-                                        ? 'تعذر تحديد موقعك تلقائياً. اضغط على الخريطة لتحديد موقعك ثم الوجهة.'
-                                        : 'Could not get your location automatically. Tap the map to set your location, then the destination.',
-                                    style: const TextStyle(
-                                      color: AppColors.error,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                ],
-                                Text(
-                                  '${isAr ? "موقعك" : "Your location"} ${_patientLocation != null ? "✓" : "..."}',
-                                ),
-                                Text(
-                                  '${isAr ? "الوجهة" : "Destination"} ${_destinationLocation != null ? "✓" : "..."}',
-                                ),
-                                if (_nearbyAmbulances.isNotEmpty)
-                                  Text(
-                                    '${isAr ? "سيارات إسعاف متاحة" : "Available ambulances"}: ${_nearbyAmbulances.length}',
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+            child: Stack(
+              children: [
+                GoogleMap(
+                  mapType: MapType.satellite,
+                  initialCameraPosition: CameraPosition(
+                    target: _patientLocation ?? const LatLng(24.7136, 46.6753),
+                    zoom: 14,
                   ),
+                  onMapCreated: (ctrl) => _mapController = ctrl,
+                  onTap: (pos) {
+                    setState(() {
+                      if (_patientLocation == null) {
+                        _patientLocation = pos;
+                      } else if (_destinationLocation == null) {
+                        _destinationLocation = pos;
+                      } else {
+                        _patientLocation = pos;
+                        _destinationLocation = null;
+                        _nearbyAmbulances.clear();
+                        _loadNearbyAmbulances();
+                      }
+                    });
+                  },
+                  markers: _buildMarkers(),
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
+                ),
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  right: 16,
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            isAr
+                                ? '📍 اضغط على الخريطة لتحديد:'
+                                : '📍 Tap map to set:',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          if (_patientLocation == null) ...[
+                            Text(
+                              isAr
+                                  ? 'تعذر تحديد موقعك تلقائياً. اضغط على الخريطة لتحديد موقعك ثم الوجهة.'
+                                  : 'Could not get your location automatically. Tap the map to set your location, then the destination.',
+                              style: const TextStyle(
+                                color: AppColors.error,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                          ],
+                          Text(
+                            '${isAr ? "موقعك" : "Your location"} ${_patientLocation != null ? "✓" : "..."}',
+                          ),
+                          if (_linkedHospitalName != null)
+                            Text(
+                              '${isAr ? "الوجهة" : "Destination"}: ${isAr ? (_linkedHospitalNameAr ?? _linkedHospitalName!) : _linkedHospitalName!}',
+                              style: const TextStyle(
+                                color: Colors.green,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          if (_linkedHospitalName == null)
+                            Text(
+                              '${isAr ? "الوجهة" : "Destination"} ${_destinationLocation != null ? "✓" : "..."}',
+                            ),
+                          if (_nearbyAmbulances.isNotEmpty)
+                            Text(
+                              '${isAr ? "سيارات إسعاف متاحة" : "Available ambulances"}: ${_nearbyAmbulances.length}',
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                if (_gettingLocation)
+                  Positioned(
+                    top: 110,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black26, blurRadius: 8),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              isAr
+                                  ? 'جار تحديد موقعك...'
+                                  : 'Getting your location...',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
           SafeArea(
             child: Padding(
@@ -324,8 +375,8 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Text(
                         isAr
-                            ? 'سيتم إرسال أقرب سيارة إسعاف إليك'
-                            : 'Nearest ambulance will be sent to you',
+                            ? 'سيتم إرسال طلبك لأقرب سائق متاح وسيتوجب عليه القبول'
+                            : 'Your request will be sent to the nearest available driver for acceptance',
                         style: const TextStyle(color: Colors.grey),
                       ),
                     ),

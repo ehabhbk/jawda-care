@@ -50,6 +50,38 @@ class HospitalService {
     return counts;
   }
 
+  Future<Map<String, int>> countAvailableBedsByDepartment() async {
+    final snapshot = await _firestore.collection('beds').get();
+    final counts = <String, int>{};
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      if (data['status'] == 'available') {
+        final departmentId = data['departmentId'] as String?;
+        if (departmentId != null && departmentId.isNotEmpty) {
+          counts[departmentId] = (counts[departmentId] ?? 0) + 1;
+        }
+      }
+    }
+    return counts;
+  }
+
+  Future<Map<String, List<Map<String, dynamic>>>>
+  getDepartmentsByHospital() async {
+    final snapshot = await _firestore.collection('departments').get();
+    final map = <String, List<Map<String, dynamic>>>{};
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final hospitalId = data['hospitalId'] as String?;
+      if (hospitalId == null || hospitalId.isEmpty) continue;
+      map.putIfAbsent(hospitalId, () => []).add({
+        'id': doc.id,
+        'name': data['name'] ?? '',
+        'nameAr': data['nameAr'] ?? '',
+      });
+    }
+    return map;
+  }
+
   Future<List<HospitalModel>> getHospitalsWithAvailableBeds() async {
     final snapshot = await _firestore
         .collection('hospitals')

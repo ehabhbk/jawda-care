@@ -9,6 +9,7 @@ import '../../../data/services/hospital_service.dart';
 import '../../../data/services/location_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/language_provider.dart';
+import '../../widgets/common/theme_toggle_button.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,6 +21,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<HospitalModel> _nearestHospitals = [];
   Map<String, int> _availableCounts = {};
+  Map<String, int> _deptAvailableCounts = {};
+  Map<String, List<Map<String, dynamic>>> _departmentsByHospital = {};
   bool _loadingLocation = true;
   final _hospitalService = HospitalService();
 
@@ -31,34 +34,46 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadNearestHospitals() async {
     try {
-      final pos = await LocationService.getPosition(context);
-
-      final hospitals = await _hospitalService.getHospitalsWithAvailableBeds();
-      final counts = await _hospitalService.countAvailableBedsByHospital();
-
-      if (pos != null) {
-        hospitals.sort((a, b) {
-          final da = _distance(
-            pos.latitude,
-            pos.longitude,
-            a.latitude,
-            a.longitude,
-          );
-          final db = _distance(
-            pos.latitude,
-            pos.longitude,
-            b.latitude,
-            b.longitude,
-          );
-          return da.compareTo(db);
-        });
-      }
+      final results = await Future.wait([
+        _hospitalService.getHospitalsWithAvailableBeds(),
+        _hospitalService.countAvailableBedsByHospital(),
+        _hospitalService.countAvailableBedsByDepartment(),
+        _hospitalService.getDepartmentsByHospital(),
+      ]);
+      final hospitals = results[0] as List<HospitalModel>;
+      final counts = results[1] as Map<String, int>;
+      final deptCounts = results[2] as Map<String, int>;
+      final deptByHospital =
+          results[3] as Map<String, List<Map<String, dynamic>>>;
 
       if (mounted) {
         setState(() {
           _nearestHospitals = hospitals.take(5).toList();
           _availableCounts = counts;
+          _deptAvailableCounts = deptCounts;
+          _departmentsByHospital = deptByHospital;
           _loadingLocation = false;
+        });
+      }
+
+      final pos = await LocationService.getPosition(context);
+      if (pos != null && mounted) {
+        setState(() {
+          _nearestHospitals.sort((a, b) {
+            final da = _distance(
+              pos.latitude,
+              pos.longitude,
+              a.latitude,
+              a.longitude,
+            );
+            final db = _distance(
+              pos.latitude,
+              pos.longitude,
+              b.latitude,
+              b.longitude,
+            );
+            return da.compareTo(db);
+          });
         });
       }
     } catch (_) {
@@ -95,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.translate),
             onPressed: () => lang.toggleLanguage(),
           ),
+          const ThemeToggleButton(),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => Navigator.of(context).pushNamed(AppRoutes.profile),
@@ -142,20 +158,128 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: _nearestHospitals
                         .map(
                           (h) => Card(
-                            child: ListTile(
-                              leading: const Icon(
-                                Icons.local_hospital,
-                                color: Colors.teal,
-                              ),
-                              title: Text(isAr ? h.nameAr : h.name),
-                              subtitle: Text(
-                                '${isAr ? "أسرة متاحة" : "Available beds"}: ${_availableCounts[h.id] ?? 0}',
-                              ),
-                              trailing: const Icon(Icons.arrow_forward_ios),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
                               onTap: () => Navigator.pushNamed(
                                 context,
                                 AppRoutes.icuBooking,
                                 arguments: h.id,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(14),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(
+                                      Icons.local_hospital,
+                                      color: Colors.teal,
+                                      size: 40,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            isAr ? h.nameAr : h.name,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          ...(() {
+                                            final depts =
+                                                _departmentsByHospital[h.id] ??
+                                                [];
+                                            final visibleDepts = depts
+                                                .where(
+                                                  (d) =>
+                                                      (_deptAvailableCounts[d['id']] ??
+                                                          0) >
+                                                      0,
+                                                )
+                                                .toList();
+                                            if (visibleDepts.isNotEmpty) {
+                                              return visibleDepts
+                                                  .map(
+                                                    (d) => Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            bottom: 3,
+                                                          ),
+                                                      child: Row(
+                                                        children: [
+                                                          const Icon(
+                                                            Icons.bed,
+                                                            size: 16,
+                                                            color: Colors.teal,
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 6,
+                                                          ),
+                                                          Expanded(
+                                                            child: Text(
+                                                              '${isAr ? (d['nameAr'] ?? d['name']) : d['name']}',
+                                                              style:
+                                                                  const TextStyle(
+                                                                    fontSize:
+                                                                        13,
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            '${_deptAvailableCounts[d['id']]}',
+                                                            style:
+                                                                const TextStyle(
+                                                                  color: Colors
+                                                                      .teal,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 4,
+                                                          ),
+                                                          Text(
+                                                            isAr
+                                                                ? 'أسرة متاحة'
+                                                                : 'beds',
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                              color: AppColors
+                                                                  .textSecondary,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList();
+                                            }
+                                            return [
+                                              Text(
+                                                '${isAr ? "أسرة متاحة" : "Available beds"}: ${_availableCounts[h.id] ?? 0}',
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  color: Colors.teal,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ];
+                                          }()),
+                                        ],
+                                      ),
+                                    ),
+                                    const Icon(
+                                      Icons.arrow_forward_ios,
+                                      size: 18,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),

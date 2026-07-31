@@ -2,9 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/models/booking_model.dart';
 import '../../data/services/booking_service.dart';
+import '../../data/services/bed_service.dart';
 
 class BookingProvider extends ChangeNotifier {
   final BookingService _bookingService = BookingService();
+  final BedService _bedService = BedService();
 
   List<BookingModel> _bookings = [];
   bool _isLoading = false;
@@ -92,6 +94,21 @@ class BookingProvider extends ChangeNotifier {
     }
   }
 
+  Future<BookingModel?> getActiveAcceptedIcuBooking({
+    required String patientName,
+    required String patientPhone,
+  }) async {
+    try {
+      return await _bookingService.getActiveAcceptedIcuBooking(
+        patientName: patientName,
+        patientPhone: patientPhone,
+      );
+    } catch (e) {
+      _errorMessage = e.toString();
+      return null;
+    }
+  }
+
   Future<bool> acceptBooking({
     required String bookingId,
     required String hospitalId,
@@ -135,6 +152,85 @@ class BookingProvider extends ChangeNotifier {
         bookingId: bookingId,
         status: 'cancelled',
         cancellationReason: reason,
+      );
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    }
+  }
+
+  Future<bool> markPatientArrived({required BookingModel booking}) async {
+    final bedId = booking.bedId;
+    if (bedId == null) {
+      _errorMessage = 'لم يتم تحديد سرير';
+      return false;
+    }
+    try {
+      await _bookingService.updateBookingStatus(
+        bookingId: booking.id!,
+        status: 'inProgress',
+      );
+      await _bedService.occupyBed(
+        bedId: bedId,
+        patientName: booking.userName,
+        patientId: booking.userId,
+        bookingId: booking.id!,
+      );
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    }
+  }
+
+  Future<bool> dischargePatient({
+    required String bookingId,
+    required String bedId,
+  }) async {
+    try {
+      await _bookingService.updateBookingStatus(
+        bookingId: bookingId,
+        status: 'completed',
+      );
+      await _bedService.releaseBed(bedId);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    }
+  }
+
+  Future<bool> acceptAmbulanceByDriver({
+    required String bookingId,
+    required String ambulanceId,
+    required String driverName,
+    required String driverPhone,
+    required String plateNumber,
+  }) async {
+    try {
+      await _bookingService.acceptAmbulanceByDriver(
+        bookingId: bookingId,
+        ambulanceId: ambulanceId,
+        driverName: driverName,
+        driverPhone: driverPhone,
+        plateNumber: plateNumber,
+      );
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    }
+  }
+
+  Future<bool> rejectAmbulanceByDriver({
+    required String bookingId,
+    required String ambulanceId,
+  }) async {
+    try {
+      await _bookingService.rejectAmbulanceByDriver(
+        bookingId: bookingId,
+        ambulanceId: ambulanceId,
       );
       return true;
     } catch (e) {

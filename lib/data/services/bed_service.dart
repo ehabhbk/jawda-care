@@ -31,6 +31,19 @@ class BedService {
         });
   }
 
+  Stream<List<BedModel>> getOccupiedBedsByHospital(String hospitalId) {
+    return _firestore
+        .collection('beds')
+        .where('hospitalId', isEqualTo: hospitalId)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) => BedModel.fromMap(doc.data(), doc.id))
+              .where((bed) => bed.status == 'occupied')
+              .toList();
+        });
+  }
+
   Future<void> _adjustHospitalAvailableBeds(
     String hospitalId,
     int delta,
@@ -77,9 +90,15 @@ class BedService {
         : '';
 
     final data = <String, dynamic>{'status': status};
-    if (patientName != null) data['patientName'] = patientName;
-    if (patientId != null) data['patientId'] = patientId;
-    if (bookingId != null) data['bookingId'] = bookingId;
+    if (status == 'available') {
+      data['patientName'] = FieldValue.delete();
+      data['patientId'] = FieldValue.delete();
+      data['bookingId'] = FieldValue.delete();
+    } else {
+      if (patientName != null) data['patientName'] = patientName;
+      if (patientId != null) data['patientId'] = patientId;
+      if (bookingId != null) data['bookingId'] = bookingId;
+    }
     await _firestore.collection('beds').doc(bedId).update(data);
 
     if (hospitalId.isNotEmpty && oldStatus != status) {
@@ -89,6 +108,25 @@ class BedService {
         await _adjustHospitalAvailableBeds(hospitalId, 1);
       }
     }
+  }
+
+  Future<void> occupyBed({
+    required String bedId,
+    required String patientName,
+    required String patientId,
+    required String bookingId,
+  }) async {
+    await updateBedStatus(
+      bedId: bedId,
+      status: 'occupied',
+      patientName: patientName,
+      patientId: patientId,
+      bookingId: bookingId,
+    );
+  }
+
+  Future<void> releaseBed(String bedId) async {
+    await updateBedStatus(bedId: bedId, status: 'available');
   }
 
   Future<void> deleteBed(String bedId) async {

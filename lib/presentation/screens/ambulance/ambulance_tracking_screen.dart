@@ -43,23 +43,76 @@ class _AmbulanceTrackingScreenState extends State<AmbulanceTrackingScreen> {
           final destLng = (bookingData?['destinationLng']).toDouble();
 
           if (ambulanceId == null) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.airport_shuttle,
-                    size: 80,
-                    color: AppColors.ambulanceRed,
+            return Stack(
+              children: [
+                if (destLat != null &&
+                    destLat != 0 &&
+                    destLng != null &&
+                    destLng != 0)
+                  GoogleMap(
+                    mapType: MapType.satellite,
+                    initialCameraPosition: CameraPosition(
+                      target: LatLng(patientLat, patientLng),
+                      zoom: 12,
+                    ),
+                    markers: {
+                      if (patientLat != 0)
+                        Marker(
+                          markerId: const MarkerId('patient'),
+                          position: LatLng(patientLat, patientLng),
+                          icon: BitmapDescriptor.defaultMarkerWithHue(
+                            BitmapDescriptor.hueBlue,
+                          ),
+                        ),
+                      Marker(
+                        markerId: const MarkerId('destination'),
+                        position: LatLng(destLat, destLng),
+                        icon: BitmapDescriptor.defaultMarkerWithHue(
+                          BitmapDescriptor.hueGreen,
+                        ),
+                        infoWindow: InfoWindow(
+                          title:
+                              (bookingData?['hospitalNameAr'] ??
+                                  bookingData?['hospitalName']) ??
+                              (isAr ? 'الوجهة' : 'Destination'),
+                        ),
+                      ),
+                    },
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    isAr
-                        ? 'في انتظار تعيين سيارة إسعاف...'
-                        : 'Waiting for ambulance assignment...',
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.airport_shuttle,
+                        size: 80,
+                        color: AppColors.ambulanceRed,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        isAr
+                            ? 'في انتظار قبول سائق الإسعاف...'
+                            : 'Waiting for a driver to accept...',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        isAr
+                            ? 'سيصلك إشعار فور قبول السائق. سيتم تحويل الطلب تلقائياً لأقرب سائق آخر إذا رفض أي سائق.'
+                            : 'You will be notified once a driver accepts. The request is automatically offered to the next nearest driver if one declines.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             );
           }
 
@@ -120,34 +173,26 @@ class _AmbulanceTrackingScreenState extends State<AmbulanceTrackingScreen> {
               return Column(
                 children: [
                   Expanded(
-                    child: driverLat == 0
-                        ? Center(
-                            child: Text(
-                              isAr
-                                  ? 'جار الحصول على موقع الإسعاف...'
-                                  : 'Getting ambulance location...',
-                            ),
-                          )
-                        : GoogleMap(
-                            mapType: MapType.satellite,
-                            initialCameraPosition: CameraPosition(
-                              target: LatLng(patientLat, patientLng),
-                              zoom: 12,
-                            ),
-                            markers: markers,
-                            polylines: {
-                              if (driverLat != 0 && patientLat != 0)
-                                Polyline(
-                                  polylineId: const PolylineId('route'),
-                                  points: [
-                                    LatLng(driverLat, driverLng),
-                                    LatLng(patientLat, patientLng),
-                                  ],
-                                  color: Colors.blue,
-                                  width: 4,
-                                ),
-                            },
+                    child: GoogleMap(
+                      mapType: MapType.satellite,
+                      initialCameraPosition: CameraPosition(
+                        target: LatLng(patientLat, patientLng),
+                        zoom: 12,
+                      ),
+                      markers: markers,
+                      polylines: {
+                        if (driverLat != 0 && patientLat != 0)
+                          Polyline(
+                            polylineId: const PolylineId('route'),
+                            points: [
+                              LatLng(driverLat, driverLng),
+                              LatLng(patientLat, patientLng),
+                            ],
+                            color: Colors.blue,
+                            width: 4,
                           ),
+                      },
+                    ),
                   ),
                   Container(
                     padding: const EdgeInsets.all(16),

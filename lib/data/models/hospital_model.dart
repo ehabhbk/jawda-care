@@ -83,21 +83,27 @@ class HospitalModel {
       addressAr: map['addressAr'] ?? '',
       city: map['city'] ?? '',
       cityAr: map['cityAr'] ?? '',
-      latitude: (map['latitude'] ?? 0).toDouble(),
-      longitude: (map['longitude'] ?? 0).toDouble(),
+      latitude: double.tryParse('${map['latitude'] ?? ''}') ?? 0,
+      longitude: double.tryParse('${map['longitude'] ?? ''}') ?? 0,
       phone: map['phone'] ?? '',
       email: map['email'] ?? '',
       password: map['password'] ?? '',
       adminUid: map['adminUid'],
       imageUrl: map['imageUrl'],
-      rating: (map['rating'] ?? 0).toDouble(),
-      totalBeds: map['totalBeds'] ?? 0,
-      availableBeds: map['availableBeds'] ?? 0,
+      rating: double.tryParse('${map['rating'] ?? ''}') ?? 0,
+      totalBeds: int.tryParse('${map['totalBeds'] ?? ''}') ?? 0,
+      availableBeds: int.tryParse('${map['availableBeds'] ?? ''}') ?? 0,
       hasAmbulance: map['hasAmbulance'] ?? false,
-      facilities: map['facilities'] != null ? List<String>.from(map['facilities']) : null,
-      facilitiesAr: map['facilitiesAr'] != null ? List<String>.from(map['facilitiesAr']) : null,
+      facilities: map['facilities'] != null
+          ? List<String>.from(map['facilities'])
+          : null,
+      facilitiesAr: map['facilitiesAr'] != null
+          ? List<String>.from(map['facilitiesAr'])
+          : null,
       isActive: map['isActive'] ?? true,
-      createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt']) : DateTime.now(),
+      createdAt: map['createdAt'] != null
+          ? DateTime.parse(map['createdAt'])
+          : DateTime.now(),
     );
   }
 }

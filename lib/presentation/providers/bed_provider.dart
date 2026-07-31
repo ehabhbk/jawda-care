@@ -18,15 +18,18 @@ class BedProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    _bedService.getBedsByDepartment(departmentId).listen((beds) {
-      _beds = beds;
-      _isLoading = false;
-      notifyListeners();
-    }).onError((error) {
-      _errorMessage = error.toString();
-      _isLoading = false;
-      notifyListeners();
-    });
+    _bedService
+        .getBedsByDepartment(departmentId)
+        .listen((beds) {
+          _beds = beds;
+          _isLoading = false;
+          notifyListeners();
+        })
+        .onError((error) {
+          _errorMessage = error.toString();
+          _isLoading = false;
+          notifyListeners();
+        });
   }
 
   Future<bool> addBed({
@@ -78,6 +81,36 @@ class BedProvider extends ChangeNotifier {
       patientId: patientId,
       bookingId: bookingId,
     );
+  }
+
+  Future<bool> occupyBed({
+    required String bedId,
+    required String patientName,
+    required String patientId,
+    required String bookingId,
+  }) async {
+    try {
+      await _bedService.occupyBed(
+        bedId: bedId,
+        patientName: patientName,
+        patientId: patientId,
+        bookingId: bookingId,
+      );
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    }
+  }
+
+  Future<bool> releaseBed(String bedId) async {
+    try {
+      await _bedService.releaseBed(bedId);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    }
   }
 
   Future<bool> deleteBed(String bedId) async {

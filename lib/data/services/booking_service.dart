@@ -81,6 +81,27 @@ class BookingService {
     return docRef.id;
   }
 
+  Future<BookingModel?> getActiveAcceptedIcuBooking({
+    required String patientName,
+    required String patientPhone,
+  }) async {
+    final snapshot = await _firestore
+        .collection('bookings')
+        .where('userPhone', isEqualTo: patientPhone)
+        .get();
+
+    for (final doc in snapshot.docs) {
+      final booking = BookingModel.fromMap(doc.data(), doc.id);
+      if (booking.userName != patientName) continue;
+      if (booking.bookingType != BookingType.icu) continue;
+      if (booking.status == BookingStatus.accepted ||
+          booking.status == BookingStatus.inProgress) {
+        return booking;
+      }
+    }
+    return null;
+  }
+
   Future<BookingModel?> getBookingById(String bookingId) async {
     final doc = await _firestore.collection('bookings').doc(bookingId).get();
     if (doc.exists) {
@@ -121,5 +142,47 @@ class BookingService {
       'status': 'inProgress',
       'updatedAt': DateTime.now().toIso8601String(),
     });
+  }
+
+  Future<void> acceptAmbulanceByDriver({
+    required String bookingId,
+    required String ambulanceId,
+    required String driverName,
+    required String driverPhone,
+    required String plateNumber,
+  }) async {
+    await _firestore.collection('bookings').doc(bookingId).update({
+      'ambulanceId': ambulanceId,
+      'driverName': driverName,
+      'driverPhone': driverPhone,
+      'plateNumber': plateNumber,
+      'status': 'accepted',
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<void> rejectAmbulanceByDriver({
+    required String bookingId,
+    required String ambulanceId,
+  }) async {
+    await _firestore.collection('bookings').doc(bookingId).update({
+      'rejectedAmbulanceIds': FieldValue.arrayUnion([ambulanceId]),
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Stream<List<BookingModel>> getPendingAmbulanceBookings() {
+    return _firestore
+        .collection('bookings')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .map((snapshot) {
+          final list = snapshot.docs
+              .map((doc) => BookingModel.fromMap(doc.data(), doc.id))
+              .where((b) => b.bookingType == BookingType.ambulance)
+              .toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 }

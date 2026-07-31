@@ -31,6 +31,7 @@ class AppRoutes {
   static const String manageBeds = '/manage-beds';
   static const String addBed = '/add-bed';
   static const String bookingRequests = '/booking-requests';
+  static const String managePatients = '/manage-patients';
 
   static const String driverDashboard = '/driver-dashboard';
   static const String driverTrip = '/driver-trip';

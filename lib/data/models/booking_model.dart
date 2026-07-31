@@ -35,10 +35,13 @@ class BookingModel {
   final String? hospitalName;
   final String? hospitalNameAr;
   final String? hospitalAddress;
+  final String? icuBookingId;
   final String? ambulanceId;
   final String? driverName;
   final String? driverPhone;
   final String? plateNumber;
+  final List<String> rejectedAmbulanceIds;
+  final String? medicalReportUrl;
   final String? notes;
   final String? cancellationReason;
   final DateTime createdAt;
@@ -65,16 +68,19 @@ class BookingModel {
     this.hospitalName,
     this.hospitalNameAr,
     this.hospitalAddress,
+    this.icuBookingId,
     this.ambulanceId,
     this.driverName,
     this.driverPhone,
     this.plateNumber,
+    this.rejectedAmbulanceIds = const [],
+    this.medicalReportUrl,
     this.notes,
     this.cancellationReason,
     DateTime? createdAt,
     DateTime? updatedAt,
-  })  : createdAt = createdAt ?? DateTime.now(),
-        updatedAt = updatedAt ?? DateTime.now();
+  }) : createdAt = createdAt ?? DateTime.now(),
+       updatedAt = updatedAt ?? DateTime.now();
 
   Map<String, dynamic> toMap() {
     return {
@@ -98,10 +104,13 @@ class BookingModel {
       'hospitalName': hospitalName,
       'hospitalNameAr': hospitalNameAr,
       'hospitalAddress': hospitalAddress,
+      'icuBookingId': icuBookingId,
       'ambulanceId': ambulanceId,
       'driverName': driverName,
       'driverPhone': driverPhone,
       'plateNumber': plateNumber,
+      'rejectedAmbulanceIds': rejectedAmbulanceIds,
+      'medicalReportUrl': medicalReportUrl,
       'notes': notes,
       'cancellationReason': cancellationReason,
       'createdAt': createdAt.toIso8601String(),
@@ -131,10 +140,15 @@ class BookingModel {
       hospitalName: map['hospitalName'],
       hospitalNameAr: map['hospitalNameAr'],
       hospitalAddress: map['hospitalAddress'],
+      icuBookingId: map['icuBookingId'],
       ambulanceId: map['ambulanceId'],
       driverName: map['driverName'],
       driverPhone: map['driverPhone'],
       plateNumber: map['plateNumber'],
+      rejectedAmbulanceIds: map['rejectedAmbulanceIds'] != null
+          ? List<String>.from(map['rejectedAmbulanceIds'])
+          : const [],
+      medicalReportUrl: map['medicalReportUrl'],
       notes: map['notes'],
       cancellationReason: map['cancellationReason'],
       createdAt: _toDateTime(map['createdAt']),

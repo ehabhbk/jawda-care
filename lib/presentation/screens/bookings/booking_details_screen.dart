@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../data/models/booking_model.dart';
@@ -117,6 +118,23 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     }
   }
 
+  Future<void> _markPatientArrived() async {
+    final bp = context.read<BookingProvider>();
+    final ok = await bp.markPatientArrived(booking: _booking!);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ok
+                ? 'تم تسجيل وصول المريض وشغل السرير'
+                : 'فشل تسجيل الوصول: ${bp.errorMessage ?? ''}',
+          ),
+        ),
+      );
+      if (ok) _load();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
@@ -206,6 +224,22 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                       isAr ? (b.bedNameAr ?? b.bedName!) : b.bedName!,
                       Icons.bed,
                     ),
+                  if (b.medicalReportUrl != null) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: ActionChip(
+                        avatar: const Icon(Icons.description, size: 18),
+                        label: Text(
+                          isAr ? 'عرض التقرير الطبي' : 'View Medical Report',
+                        ),
+                        onPressed: () => launchUrl(
+                          Uri.parse(b.medicalReportUrl!),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                      ),
+                    ),
+                  ],
                   if (b.driverName != null)
                     _buildInfoRow(
                       isAr ? 'السائق' : 'Driver',
@@ -270,6 +304,108 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     isAr ? 'إلغاء الحجز' : 'Cancel Booking',
                     style: const TextStyle(color: Colors.white),
                   ),
+                ),
+              ),
+            if (isIcu && !isHospitalUser && b.status == BookingStatus.accepted)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pushNamed(
+                    context,
+                    AppRoutes.ambulanceBooking,
+                    arguments: {
+                      'icuBookingId': b.id,
+                      'hospitalId': b.hospitalId,
+                      'hospitalName': b.hospitalName,
+                      'hospitalNameAr': b.hospitalNameAr,
+                    },
+                  ),
+                  icon: const Icon(Icons.airport_shuttle),
+                  label: Text(isAr ? 'طلب سيارة إسعاف' : 'Request Ambulance'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.ambulanceRed,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+            if (isIcu && isHospitalUser && b.status == BookingStatus.accepted)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _markPatientArrived,
+                  icon: const Icon(Icons.assignment_turned_in),
+                  label: Text(
+                    isAr
+                        ? 'تأكيد وصول المريض وشغل السرير'
+                        : 'Patient Arrived - Occupy Bed',
+                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                ),
+              ),
+            if (isHospitalUser &&
+                (b.status == BookingStatus.inProgress ||
+                    b.status == BookingStatus.accepted) &&
+                b.bedId != null)
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: Text(
+                          isAr ? 'إخراج المريض' : 'Discharge Patient',
+                        ),
+                        content: Text(
+                          isAr
+                              ? 'هل أنت متأكد من إخراج المريض؟ سيعود السرير متاحاً.'
+                              : 'Are you sure? The bed will become available again.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: Text(isAr ? 'رجوع' : 'Back'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                            ),
+                            child: Text(
+                              isAr ? 'إخراج' : 'Discharge',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true && mounted) {
+                      final bp = context.read<BookingProvider>();
+                      final ok = await bp.dischargePatient(
+                        bookingId: b.id!,
+                        bedId: b.bedId!,
+                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              ok
+                                  ? (isAr
+                                        ? 'تم إخراج المريض والسرير أصبح متاحاً'
+                                        : 'Patient discharged, bed is available')
+                                  : (isAr
+                                        ? 'فشل الإخراج: ${bp.errorMessage ?? ''}'
+                                        : 'Discharge failed'),
+                            ),
+                          ),
+                        );
+                        if (ok) _load();
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.logout),
+                  label: Text(isAr ? 'إخراج المريض' : 'Discharge Patient'),
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
                 ),
               ),
             if (b.status == BookingStatus.accepted ||

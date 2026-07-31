@@ -34,6 +34,7 @@ import 'presentation/screens/hospital/hospital_dashboard_screen.dart';
 import 'presentation/screens/hospital/manage_departments_screen.dart';
 import 'presentation/screens/hospital/manage_beds_screen.dart';
 import 'presentation/screens/hospital/booking_requests_screen.dart';
+import 'presentation/screens/hospital/patients_management_screen.dart';
 import 'presentation/screens/driver/driver_dashboard_screen.dart';
 import 'presentation/screens/driver/driver_trip_screen.dart';
 
@@ -101,98 +102,160 @@ class _JawdaCareAppState extends State<JawdaCareApp>
 
         switch (settings.name) {
           case AppRoutes.splash:
-            return MaterialPageRoute(builder: (_) => const SplashScreen());
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const SplashScreen(),
+            );
           case AppRoutes.login:
-            return MaterialPageRoute(builder: (_) => const LoginScreen());
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const LoginScreen(),
+            );
           case AppRoutes.register:
-            return MaterialPageRoute(builder: (_) => const RegisterScreen());
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const RegisterScreen(),
+            );
           case AppRoutes.emailVerification:
             return MaterialPageRoute(
+              settings: settings,
               builder: (_) => const EmailVerificationScreen(),
             );
           case AppRoutes.forgotPassword:
             return MaterialPageRoute(
+              settings: settings,
               builder: (_) => const ForgotPasswordScreen(),
             );
           case AppRoutes.aboutUs:
-            return MaterialPageRoute(builder: (_) => const AboutUsScreen());
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const AboutUsScreen(),
+            );
           case AppRoutes.home:
-            return MaterialPageRoute(builder: (_) => const HomeScreen());
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const HomeScreen(),
+            );
           case AppRoutes.icuList:
-            return MaterialPageRoute(builder: (_) => const IcuListScreen());
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const IcuListScreen(),
+            );
           case AppRoutes.icuBooking:
-            return MaterialPageRoute(builder: (_) => const IcuBookingScreen());
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const IcuBookingScreen(),
+            );
           case AppRoutes.ambulanceBooking:
             return MaterialPageRoute(
+              settings: settings,
               builder: (_) => const AmbulanceBookingScreen(),
             );
           case AppRoutes.ambulanceTracking:
             final bookingId = args as String;
             return MaterialPageRoute(
+              settings: settings,
               builder: (_) => AmbulanceTrackingScreen(bookingId: bookingId),
             );
           case AppRoutes.myBookings:
-            return MaterialPageRoute(builder: (_) => const MyBookingsScreen());
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const MyBookingsScreen(),
+            );
           case AppRoutes.bookingDetails:
             return MaterialPageRoute(
+              settings: settings,
               builder: (_) => const BookingDetailsScreen(),
             );
           case AppRoutes.profile:
-            return MaterialPageRoute(builder: (_) => const ProfileScreen());
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const ProfileScreen(),
+            );
           case AppRoutes.editProfile:
-            return MaterialPageRoute(builder: (_) => const EditProfileScreen());
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const EditProfileScreen(),
+            );
           case AppRoutes.adminDashboard:
             return MaterialPageRoute(
+              settings: settings,
               builder: (_) => const AdminDashboardScreen(),
             );
           case AppRoutes.hospitalsManagement:
             return MaterialPageRoute(
+              settings: settings,
               builder: (_) => const HospitalsManagementScreen(),
             );
           case AppRoutes.ambulancesManagement:
             return MaterialPageRoute(
+              settings: settings,
               builder: (_) => const AmbulancesManagementScreen(),
             );
           case AppRoutes.adminsManagement:
             return MaterialPageRoute(
+              settings: settings,
               builder: (_) => const AdminsManagementScreen(),
             );
           case AppRoutes.addHospital:
-            return MaterialPageRoute(builder: (_) => const AddHospitalScreen());
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const AddHospitalScreen(),
+            );
           case AppRoutes.addAmbulance:
             return MaterialPageRoute(
+              settings: settings,
               builder: (_) => const AddAmbulanceScreen(),
             );
           case AppRoutes.addAdmin:
-            return MaterialPageRoute(builder: (_) => const AddAdminScreen());
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const AddAdminScreen(),
+            );
           case AppRoutes.hospitalDashboard:
             return MaterialPageRoute(
+              settings: settings,
               builder: (_) => const HospitalDashboardScreen(),
             );
           case AppRoutes.manageDepartments:
             return MaterialPageRoute(
+              settings: settings,
               builder: (_) => const ManageDepartmentsScreen(),
             );
           case AppRoutes.manageBeds:
-            return MaterialPageRoute(builder: (_) => const ManageBedsScreen());
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const ManageBedsScreen(),
+            );
           case AppRoutes.bookingRequests:
             return MaterialPageRoute(
+              settings: settings,
               builder: (_) => const BookingRequestsScreen(),
+            );
+          case AppRoutes.managePatients:
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const PatientsManagementScreen(),
             );
           case AppRoutes.driverDashboard:
             return MaterialPageRoute(
+              settings: settings,
               builder: (_) => const DriverDashboardScreen(),
             );
           case AppRoutes.driverTrip:
             final tripArgs = args as Map<String, dynamic>;
             return MaterialPageRoute(
+              settings: settings,
               builder: (_) => DriverTripScreen(
                 bookingId: tripArgs['bookingId'],
                 ambulanceId: tripArgs['ambulanceId'],
               ),
             );
           default:
-            return MaterialPageRoute(builder: (_) => const SplashScreen());
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const SplashScreen(),
+            );
         }
       },
     );

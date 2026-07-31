@@ -309,7 +309,8 @@ class _BookingCard extends StatelessWidget {
               Row(
                 children: [
                   if (!isIcu &&
-                      (booking.status == BookingStatus.accepted ||
+                      (booking.status == BookingStatus.pending ||
+                          booking.status == BookingStatus.accepted ||
                           booking.status == BookingStatus.headingToPatient ||
                           booking.status == BookingStatus.pickedUp))
                     Expanded(
@@ -342,6 +343,32 @@ class _BookingCard extends StatelessWidget {
                         ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.red,
+                        ),
+                      ),
+                    ),
+                  if (isIcu &&
+                      booking.id != null &&
+                      booking.hospitalId != null &&
+                      booking.status == BookingStatus.accepted)
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.airport_shuttle, size: 16),
+                        onPressed: () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.ambulanceBooking,
+                          arguments: {
+                            'icuBookingId': booking.id,
+                            'hospitalId': booking.hospitalId,
+                            'hospitalName': booking.hospitalName,
+                            'hospitalNameAr': booking.hospitalNameAr,
+                          },
+                        ),
+                        label: Text(
+                          isAr ? 'طلب إسعاف' : 'Ambulance',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.ambulanceRed,
                         ),
                       ),
                     ),

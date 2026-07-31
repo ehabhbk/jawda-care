@@ -1,12 +1,16 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_selector/file_selector.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../data/models/hospital_model.dart';
 import '../../../data/models/booking_model.dart';
 import '../../../data/services/hospital_service.dart';
 import '../../../data/services/location_service.dart';
+import '../../../data/services/medical_report_service.dart';
 import '../../providers/booking_provider.dart';
 import '../../providers/auth_provider.dart';
 
@@ -26,7 +30,14 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
   String? _selectedBedName;
   String? _selectedBedNameAr;
   bool _loading = true;
+  String? _errorMessage;
   final _hospitalService = HospitalService();
+  final _reportService = MedicalReportService();
+  final _imagePicker = ImagePicker();
+  String? _reportUrl;
+  String? _reportFileName;
+  String? _reportError;
+  bool _uploadingReport = false;
 
   @override
   void initState() {
@@ -44,45 +55,174 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
       hospitalId = args.id;
     }
 
-    if (hospitalId == null) return;
-
-    final h = await _hospitalService.getHospitalById(hospitalId);
-    if (h == null) return;
-
-    final deptSnap = await FirebaseFirestore.instance
-        .collection('departments')
-        .where('hospitalId', isEqualTo: hospitalId)
-        .get();
-
-    final depts = deptSnap.docs
-        .map((d) => {'id': d.id, 'name': d['name'], 'nameAr': d['nameAr']})
-        .toList();
-
-    final bedsMap = <String, List<Map<String, dynamic>>>{};
-    for (final dept in depts) {
-      final bedSnap = await FirebaseFirestore.instance
-          .collection('beds')
-          .where('departmentId', isEqualTo: dept['id'])
-          .get();
-      bedsMap[dept['id']] = bedSnap.docs
-          .map(
-            (b) => {
-              'id': b.id,
-              'name': b['name'],
-              'nameAr': b['nameAr'],
-              'status': b['status'] ?? 'available',
-            },
-          )
-          .toList();
+    if (hospitalId == null) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _errorMessage = 'لم يتم تحديد المستشفى';
+        });
+      }
+      return;
     }
 
-    if (mounted)
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final h = await _hospitalService.getHospitalById(hospitalId);
+      if (h == null) {
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _errorMessage = 'المستشفى غير موجود';
+          });
+        }
+        return;
+      }
+
+      final deptSnap = await FirebaseFirestore.instance
+          .collection('departments')
+          .where('hospitalId', isEqualTo: hospitalId)
+          .get();
+
+      final depts = deptSnap.docs
+          .map((d) => {'id': d.id, 'name': d['name'], 'nameAr': d['nameAr']})
+          .toList();
+
+      final bedsMap = <String, List<Map<String, dynamic>>>{};
+      final results = await Future.wait(
+        depts.map(
+          (dept) => FirebaseFirestore.instance
+              .collection('beds')
+              .where('departmentId', isEqualTo: dept['id'])
+              .get(),
+        ),
+      );
+      for (var i = 0; i < depts.length; i++) {
+        bedsMap[depts[i]['id']] = results[i].docs
+            .map(
+              (b) => {
+                'id': b.id,
+                'name': b['name'],
+                'nameAr': b['nameAr'],
+                'status': b['status'] ?? 'available',
+              },
+            )
+            .toList();
+      }
+
+      if (mounted) {
+        setState(() {
+          _hospital = h;
+          _departments = depts;
+          _beds = bedsMap;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _errorMessage = e.toString();
+        });
+      }
+    }
+  }
+
+  Future<void> _pickCameraPhoto() async {
+    final file = await _imagePicker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1600,
+      imageQuality: 85,
+    );
+    if (file == null) return;
+    await _uploadReport(File(file.path), file.name);
+  }
+
+  Future<void> _pickGalleryImage() async {
+    final file = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1600,
+      imageQuality: 85,
+    );
+    if (file == null) return;
+    await _uploadReport(File(file.path), file.name);
+  }
+
+  Future<void> _pickPdf() async {
+    const typeGroup = XTypeGroup(
+      label: 'PDF',
+      extensions: ['pdf'],
+      mimeTypes: ['application/pdf'],
+    );
+    final file = await openFile(acceptedTypeGroups: [typeGroup]);
+    if (file == null) return;
+    await _uploadReport(File(file.path), file.name);
+  }
+
+  Future<void> _uploadReport(File file, String fileName) async {
+    setState(() {
+      _uploadingReport = true;
+      _reportError = null;
+    });
+    try {
+      final url = await _reportService.uploadReport(
+        file: file,
+        fileName: '${DateTime.now().millisecondsSinceEpoch}_$fileName',
+      );
+      if (!mounted) return;
       setState(() {
-        _hospital = h;
-        _departments = depts;
-        _beds = bedsMap;
-        _loading = false;
+        _reportUrl = url;
+        _reportFileName = fileName;
+        _uploadingReport = false;
       });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _uploadingReport = false;
+        _reportError = 'فشل رفع التقرير الطبي، حاول مرة أخرى';
+      });
+    }
+  }
+
+  Future<void> _pickReportSource() async {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera),
+              title: Text(isAr ? 'التقاط صورة بالكاميرا' : 'Take photo'),
+              onTap: () => Navigator.pop(ctx, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: Text(isAr ? 'صورة من المعرض' : 'Image from gallery'),
+              onTap: () => Navigator.pop(ctx, 'gallery'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf),
+              title: Text(isAr ? 'ملف PDF' : 'PDF file'),
+              onTap: () => Navigator.pop(ctx, 'pdf'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+    switch (choice) {
+      case 'camera':
+        await _pickCameraPhoto();
+      case 'gallery':
+        await _pickGalleryImage();
+      case 'pdf':
+        await _pickPdf();
+    }
   }
 
   List<Map<String, dynamic>> _visibleBeds(String deptId) {
@@ -98,6 +238,40 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
       count += deptBeds.where((b) => b['status'] == 'available').length;
     }
     return count;
+  }
+
+  Future<void> _showExistingBookingBlockedDialog(
+    BookingModel existing,
+    bool isAr,
+  ) async {
+    final hospitalLabel = isAr
+        ? (existing.hospitalNameAr ?? existing.hospitalName)
+        : (existing.hospitalName ?? existing.hospitalNameAr);
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(
+          Icons.warning_amber_rounded,
+          color: Colors.orange,
+          size: 48,
+        ),
+        title: Text(isAr ? 'لا يمكن إتمام الحجز' : 'Booking not allowed'),
+        content: Text(
+          isAr
+              ? 'المريض (${existing.userName}) لديه حجز نشط في مستشفى "$hospitalLabel". '
+                    'يجب إلغاء هذا الحجز أولاً قبل حجز سرير في مستشفى آخر.'
+              : 'Patient (${existing.userName}) already has an active booking at '
+                    '"$hospitalLabel". You must cancel it before booking a bed elsewhere.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(isAr ? 'حسناً' : 'OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showBookingDialog() async {
@@ -158,52 +332,13 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
   }
 
   Future<void> _showOtherPatientForm(bool isAr) async {
-    final nameCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController();
-
-    final result = await showDialog<bool>(
+    final result = await showDialog<_OtherPatientData>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(isAr ? 'بيانات المريض' : 'Patient Details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: InputDecoration(
-                labelText: isAr ? 'اسم المريض' : 'Patient name',
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: phoneCtrl,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                labelText: isAr ? 'رقم الهاتف' : 'Phone number',
-                border: const OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(isAr ? 'إلغاء' : 'Cancel'),
-          ),
-          ElevatedButton(
-            onPressed:
-                nameCtrl.text.trim().isEmpty || phoneCtrl.text.trim().isEmpty
-                ? null
-                : () => Navigator.pop(ctx, true),
-            child: Text(isAr ? 'تأكيد' : 'Confirm'),
-          ),
-        ],
-      ),
+      builder: (ctx) => _OtherPatientFormDialog(isAr: isAr),
     );
 
-    if (result == true && mounted) {
-      await _submitBooking(nameCtrl.text.trim(), phoneCtrl.text.trim());
+    if (result != null && mounted) {
+      await _submitBooking(result.name, result.phone);
     }
   }
 
@@ -215,6 +350,22 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
 
     try {
+      final patientName = otherName ?? auth.userModel!.name;
+      final patientPhone = otherPhone ?? auth.userModel!.phone;
+
+      final existing = await booking.getActiveAcceptedIcuBooking(
+        patientName: patientName,
+        patientPhone: patientPhone,
+      );
+
+      if (existing != null) {
+        if (mounted) {
+          await _showExistingBookingBlockedDialog(existing, isAr);
+        }
+        return;
+      }
+
+      if (!mounted) return;
       final pos = await LocationService.getPosition(context);
       if (pos == null) {
         if (mounted) {
@@ -224,9 +375,6 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
         }
         return;
       }
-
-      final patientName = otherName ?? auth.userModel!.name;
-      final patientPhone = otherPhone ?? auth.userModel!.phone;
 
       final bookingModel = BookingModel(
         userId: auth.userModel!.id!,
@@ -252,6 +400,7 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
         hospitalAddress: _hospital!.addressAr.isNotEmpty
             ? _hospital!.addressAr
             : _hospital!.address,
+        medicalReportUrl: _reportUrl,
       );
 
       final id = await booking.createBookingFromModel(bookingModel);
@@ -286,6 +435,47 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
       appBar: AppBar(title: Text(isAr ? 'حجز سرير' : 'Book a Bed')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 56,
+                      color: AppColors.error,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      isAr
+                          ? 'حدث خطأ أثناء تحميل بيانات الحجز'
+                          : 'Failed to load booking data',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    if (_errorMessage != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        _errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: _load,
+                      icon: const Icon(Icons.refresh),
+                      label: Text(isAr ? 'إعادة المحاولة' : 'Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -339,40 +529,56 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ..._departments.map((d) {
-                    final deptBeds = _beds[d['id']] ?? [];
-                    final availableCount = deptBeds
-                        .where((b) => b['status'] == 'available')
-                        .length;
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: RadioListTile<String>(
-                        title: Text(
-                          d['nameAr'] ?? d['name'],
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                  if (_departments.isEmpty)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          isAr
+                              ? 'لا توجد أقسام في هذا المستشفى حالياً'
+                              : 'No departments in this hospital yet',
                         ),
-                        subtitle: Row(
-                          children: [
-                            const Icon(Icons.bed, size: 16, color: Colors.teal),
-                            const SizedBox(width: 4),
-                            Text(
-                              '$availableCount ${isAr ? "أسرة متاحة" : "beds available"}',
-                            ),
-                          ],
-                        ),
-                        value: d['id'],
-                        groupValue: _selectedDeptId,
-                        onChanged: availableCount == 0
-                            ? null
-                            : (v) {
-                                setState(() {
-                                  _selectedDeptId = v;
-                                  _selectedBedId = null;
-                                });
-                              },
                       ),
-                    );
-                  }),
+                    )
+                  else
+                    ..._departments.map((d) {
+                      final deptBeds = _beds[d['id']] ?? [];
+                      final availableCount = deptBeds
+                          .where((b) => b['status'] == 'available')
+                          .length;
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: RadioListTile<String>(
+                          title: Text(
+                            d['nameAr'] ?? d['name'],
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Row(
+                            children: [
+                              const Icon(
+                                Icons.bed,
+                                size: 16,
+                                color: Colors.teal,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$availableCount ${isAr ? "أسرة متاحة" : "beds available"}',
+                              ),
+                            ],
+                          ),
+                          value: d['id'],
+                          groupValue: _selectedDeptId,
+                          onChanged: availableCount == 0
+                              ? null
+                              : (v) {
+                                  setState(() {
+                                    _selectedDeptId = v;
+                                    _selectedBedId = null;
+                                  });
+                                },
+                        ),
+                      );
+                    }),
                   if (_selectedDeptId != null) ...[
                     if (_visibleBeds(_selectedDeptId!).isNotEmpty) ...[
                       const SizedBox(height: 16),
@@ -432,6 +638,108 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
                     ),
                   ],
                   const SizedBox(height: 24),
+                  Text(
+                    isAr
+                        ? 'إرفاق تقرير طبي (اختياري)'
+                        : 'Medical Report (optional)',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.description_outlined,
+                                color: Colors.teal,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _uploadingReport
+                                    ? Row(
+                                        children: [
+                                          const SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            isAr
+                                                ? 'جاري رفع التقرير...'
+                                                : 'Uploading report...',
+                                          ),
+                                        ],
+                                      )
+                                    : _reportFileName != null
+                                    ? Text(
+                                        _reportFileName!,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      )
+                                    : Text(
+                                        isAr
+                                            ? 'لم يتم اختيار ملف'
+                                            : 'No file selected',
+                                        style: TextStyle(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                              ),
+                              if (_reportFileName != null && !_uploadingReport)
+                                IconButton(
+                                  tooltip: isAr ? 'إزالة' : 'Remove',
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () {
+                                    setState(() {
+                                      _reportUrl = null;
+                                      _reportFileName = null;
+                                    });
+                                  },
+                                ),
+                            ],
+                          ),
+                          if (_reportError != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              _reportError!,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.red,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _uploadingReport
+                                  ? null
+                                  : _pickReportSource,
+                              icon: const Icon(Icons.attach_file),
+                              label: Text(
+                                isAr
+                                    ? 'اختيار صورة أو ملف PDF'
+                                    : 'Choose image or PDF file',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -456,4 +764,97 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
             ),
     );
   }
+}
+
+class _OtherPatientFormDialog extends StatefulWidget {
+  final bool isAr;
+
+  const _OtherPatientFormDialog({required this.isAr});
+
+  @override
+  State<_OtherPatientFormDialog> createState() =>
+      _OtherPatientFormDialogState();
+}
+
+class _OtherPatientFormDialogState extends State<_OtherPatientFormDialog> {
+  final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
+
+  bool get _canConfirm =>
+      _nameCtrl.text.trim().isNotEmpty && _phoneCtrl.text.trim().length >= 6;
+
+  void _onChanged(String _) => setState(() {});
+
+  void _confirm() {
+    if (!_canConfirm) return;
+    Navigator.of(
+      context,
+    ).pop(_OtherPatientData(_nameCtrl.text.trim(), _phoneCtrl.text.trim()));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isAr = widget.isAr;
+
+    return AlertDialog(
+      title: Text(isAr ? 'بيانات المريض' : 'Patient Details'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _nameCtrl,
+            onChanged: _onChanged,
+            decoration: InputDecoration(
+              labelText: isAr ? 'اسم المريض' : 'Patient name',
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _phoneCtrl,
+            keyboardType: TextInputType.phone,
+            onChanged: _onChanged,
+            decoration: InputDecoration(
+              labelText: isAr ? 'رقم الهاتف' : 'Phone number',
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              isAr
+                  ? 'رقم الهاتف يجب أن يكون 6 أرقام على الأقل'
+                  : 'Phone number must be at least 6 digits',
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(isAr ? 'إلغاء' : 'Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _canConfirm ? _confirm : null,
+          child: Text(isAr ? 'تأكيد' : 'Confirm'),
+        ),
+      ],
+    );
+  }
+}
+
+class _OtherPatientData {
+  final String name;
+  final String phone;
+
+  const _OtherPatientData(this.name, this.phone);
 }
