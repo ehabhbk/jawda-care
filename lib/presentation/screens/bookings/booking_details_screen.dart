@@ -35,7 +35,10 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 
     if (bookingId == null) return;
 
-    final doc = await FirebaseFirestore.instance.collection('bookings').doc(bookingId).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('bookings')
+        .doc(bookingId)
+        .get();
     if (doc.exists && mounted) {
       setState(() {
         _booking = BookingModel.fromMap(doc.data()!, doc.id);
@@ -70,9 +73,9 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 
     final bedId = _booking?.bedId;
     if (bedId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لم يتم تحديد سرير')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('لم يتم تحديد سرير')));
       return;
     }
 
@@ -83,9 +86,9 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     );
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم قبول الحجز')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم قبول الحجز')));
       _load();
     }
   }
@@ -95,9 +98,9 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     await bp.rejectBooking(bookingId: _booking!.id!);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم رفض الحجز')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم رفض الحجز')));
       _load();
     }
   }
@@ -107,9 +110,9 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     await bp.rejectBooking(bookingId: _booking!.id!, reason: 'ألغاه المستخدم');
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم إلغاء الحجز')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم إلغاء الحجز')));
       Navigator.pop(context);
     }
   }
@@ -119,8 +122,16 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
     final auth = context.watch<AuthProvider>();
 
-    if (_loading) return Scaffold(appBar: AppBar(title: const Text('')), body: const Center(child: CircularProgressIndicator()));
-    if (_booking == null) return Scaffold(appBar: AppBar(title: const Text('')), body: const Center(child: Text('لا توجد بيانات')));
+    if (_loading)
+      return Scaffold(
+        appBar: AppBar(title: const Text('')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    if (_booking == null)
+      return Scaffold(
+        appBar: AppBar(title: const Text('')),
+        body: const Center(child: Text('لا توجد بيانات')),
+      );
 
     final b = _booking!;
     final isIcu = b.bookingType.name == 'icu';
@@ -135,7 +146,10 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Column(
                 children: [
                   Container(
@@ -153,23 +167,63 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                   const SizedBox(height: 16),
                   Text(
                     isAr ? b.statusLabelAr : b.statusLabel,
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _statusColor(b.status.name)),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: _statusColor(b.status.name),
+                    ),
                   ),
                   const SizedBox(height: 24),
-                  _buildInfoRow(isAr ? 'المريض' : 'Patient', b.userName, Icons.person),
-                  _buildInfoRow(isAr ? 'الهاتف' : 'Phone', b.userPhone, Icons.phone),
+                  _buildInfoRow(
+                    isAr ? 'المريض' : 'Patient',
+                    b.userName,
+                    Icons.person,
+                  ),
+                  _buildInfoRow(
+                    isAr ? 'الهاتف' : 'Phone',
+                    b.userPhone,
+                    Icons.phone,
+                  ),
                   if (b.hospitalName != null)
-                    _buildInfoRow(isAr ? 'المستشفى' : 'Hospital', isAr ? (b.hospitalNameAr ?? b.hospitalName!) : b.hospitalName!, Icons.local_hospital),
+                    _buildInfoRow(
+                      isAr ? 'المستشفى' : 'Hospital',
+                      isAr
+                          ? (b.hospitalNameAr ?? b.hospitalName!)
+                          : b.hospitalName!,
+                      Icons.local_hospital,
+                    ),
                   if (b.departmentName != null)
-                    _buildInfoRow(isAr ? 'القسم' : 'Department', isAr ? (b.departmentNameAr ?? b.departmentName!) : b.departmentName!, Icons.category),
+                    _buildInfoRow(
+                      isAr ? 'القسم' : 'Department',
+                      isAr
+                          ? (b.departmentNameAr ?? b.departmentName!)
+                          : b.departmentName!,
+                      Icons.category,
+                    ),
                   if (b.bedName != null)
-                    _buildInfoRow(isAr ? 'السرير' : 'Bed', isAr ? (b.bedNameAr ?? b.bedName!) : b.bedName!, Icons.bed),
+                    _buildInfoRow(
+                      isAr ? 'السرير' : 'Bed',
+                      isAr ? (b.bedNameAr ?? b.bedName!) : b.bedName!,
+                      Icons.bed,
+                    ),
                   if (b.driverName != null)
-                    _buildInfoRow(isAr ? 'السائق' : 'Driver', b.driverName!, Icons.person),
+                    _buildInfoRow(
+                      isAr ? 'السائق' : 'Driver',
+                      b.driverName!,
+                      Icons.person,
+                    ),
                   if (b.driverPhone != null)
-                    _buildInfoRow(isAr ? 'هاتف السائق' : 'Driver Phone', b.driverPhone!, Icons.phone),
+                    _buildInfoRow(
+                      isAr ? 'هاتف السائق' : 'Driver Phone',
+                      b.driverPhone!,
+                      Icons.phone,
+                    ),
                   if (b.plateNumber != null)
-                    _buildInfoRow(isAr ? 'رقم اللوحة' : 'Plate', b.plateNumber!, Icons.directions_car),
+                    _buildInfoRow(
+                      isAr ? 'رقم اللوحة' : 'Plate',
+                      b.plateNumber!,
+                      Icons.directions_car,
+                    ),
                 ],
               ),
             ),
@@ -180,34 +234,54 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: _acceptBooking,
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                      child: Text(isAr ? 'قبول' : 'Accept', style: const TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                      child: Text(
+                        isAr ? 'قبول' : 'Accept',
+                        style: const TextStyle(color: Colors.white),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: _rejectBooking,
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                      child: Text(isAr ? 'رفض' : 'Reject', style: const TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
+                      child: Text(
+                        isAr ? 'رفض' : 'Reject',
+                        style: const TextStyle(color: Colors.white),
+                      ),
                     ),
                   ),
                 ],
               ),
-            if (!isHospitalUser && (b.status == BookingStatus.pending || b.status == BookingStatus.accepted))
+            if (!isHospitalUser &&
+                (b.status == BookingStatus.pending ||
+                    b.status == BookingStatus.accepted))
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _cancelBooking,
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  child: Text(isAr ? 'إلغاء الحجز' : 'Cancel Booking', style: const TextStyle(color: Colors.white)),
+                  child: Text(
+                    isAr ? 'إلغاء الحجز' : 'Cancel Booking',
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
-            if (b.status == BookingStatus.accepted || b.status == BookingStatus.inProgress)
+            if (b.status == BookingStatus.accepted ||
+                b.status == BookingStatus.inProgress)
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pushNamed(context, AppRoutes.ambulanceTracking, arguments: b.id),
+                  onPressed: () => Navigator.pushNamed(
+                    context,
+                    AppRoutes.ambulanceTracking,
+                    arguments: b.id,
+                  ),
                   icon: const Icon(Icons.map),
                   label: Text(isAr ? 'تتبع الحجز' : 'Track Booking'),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
@@ -229,8 +303,17 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-              Text(value, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+              Text(
+                label,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ],

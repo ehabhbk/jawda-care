@@ -27,24 +27,35 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
 
   Future<void> _cancelBooking(BookingModel booking) async {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    final bookingProvider = context.read<BookingProvider>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(isAr ? 'إلغاء الحجز' : 'Cancel Booking'),
-        content: Text(isAr ? 'هل أنت متأكد من إلغاء هذا الحجز؟' : 'Are you sure you want to cancel this booking?'),
+        content: Text(
+          isAr
+              ? 'هل أنت متأكد من إلغاء هذا الحجز؟'
+              : 'Are you sure you want to cancel this booking?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(isAr ? 'رجوع' : 'Back')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(isAr ? 'رجوع' : 'Back'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text(isAr ? 'إلغاء' : 'Cancel', style: const TextStyle(color: Colors.white)),
+            child: Text(
+              isAr ? 'إلغاء' : 'Cancel',
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
     );
 
     if (confirmed == true && booking.id != null) {
-      await context.read<BookingProvider>().cancelBooking(bookingId: booking.id!);
+      await bookingProvider.cancelBooking(bookingId: booking.id!);
     }
   }
 
@@ -61,9 +72,32 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   }
 
   Widget _buildContent(BookingProvider provider, bool isAr) {
-    if (provider.isLoading) return const Center(child: CircularProgressIndicator());
+    if (provider.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
     if (provider.errorMessage != null) {
-      return Center(child: Text(provider.errorMessage!));
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 56, color: AppColors.error),
+            const SizedBox(height: 12),
+            Text(
+              isAr ? 'حدث خطأ أثناء تحميل الحجوزات' : 'Failed to load bookings',
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                final userId = context.read<AuthProvider>().userModel?.id;
+                if (userId != null) {
+                  context.read<BookingProvider>().loadUserBookings(userId);
+                }
+              },
+              child: Text(isAr ? 'إعادة المحاولة' : 'Retry'),
+            ),
+          ],
+        ),
+      );
     }
 
     final bookings = provider.bookings;
@@ -75,7 +109,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
           children: [
             Icon(Icons.calendar_today, size: 64, color: Colors.grey[300]),
             const SizedBox(height: 16),
-            Text(isAr ? 'لا توجد حجوزات' : 'No bookings', style: const TextStyle(color: AppColors.textSecondary, fontSize: 16)),
+            Text(
+              isAr ? 'لا توجد حجوزات' : 'No bookings',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pushNamed(AppRoutes.home),
@@ -94,7 +131,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         return _BookingCard(
           booking: b,
           isAr: isAr,
-          onCancel: (b.status == BookingStatus.pending || b.status == BookingStatus.accepted || b.status == BookingStatus.inProgress)
+          onCancel:
+              (b.status == BookingStatus.pending ||
+                  b.status == BookingStatus.accepted ||
+                  b.status == BookingStatus.inProgress)
               ? () => _cancelBooking(b)
               : null,
         );
@@ -108,7 +148,11 @@ class _BookingCard extends StatelessWidget {
   final bool isAr;
   final VoidCallback? onCancel;
 
-  const _BookingCard({required this.booking, required this.isAr, this.onCancel});
+  const _BookingCard({
+    required this.booking,
+    required this.isAr,
+    this.onCancel,
+  });
 
   Color _statusColor(String status) {
     switch (status) {
@@ -141,7 +185,8 @@ class _BookingCard extends StatelessWidget {
         ? (isAr ? 'حجز سرير' : 'Bed Booking')
         : (isAr ? 'حجز إسعاف' : 'Ambulance Booking');
 
-    final isActive = booking.status == BookingStatus.pending ||
+    final isActive =
+        booking.status == BookingStatus.pending ||
         booking.status == BookingStatus.accepted ||
         booking.status == BookingStatus.inProgress ||
         booking.status == BookingStatus.headingToPatient ||
@@ -150,7 +195,7 @@ class _BookingCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -180,85 +225,151 @@ class _BookingCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         isAr ? booking.statusLabelAr : booking.statusLabel,
-                        style: TextStyle(color: _statusColor(booking.status.name), fontWeight: FontWeight.w600, fontSize: 13),
+                        style: TextStyle(
+                          color: _statusColor(booking.status.name),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 if (isIcu && isActive)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.teal.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(isAr ? 'قيد التنفيذ' : 'Active', style: const TextStyle(color: Colors.teal, fontSize: 11, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      isAr ? 'قيد التنفيذ' : 'Active',
+                      style: const TextStyle(
+                        color: Colors.teal,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                const Icon(Icons.person, size: 16, color: AppColors.textSecondary),
+                Icon(Icons.person, size: 16, color: AppColors.textSecondary),
                 const SizedBox(width: 4),
-                Text(booking.userName, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                Text(
+                  booking.userName,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
                 const SizedBox(width: 16),
-                const Icon(Icons.phone, size: 16, color: AppColors.textSecondary),
+                Icon(Icons.phone, size: 16, color: AppColors.textSecondary),
                 const SizedBox(width: 4),
-                Text(booking.userPhone, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                Text(
+                  booking.userPhone,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 4),
             Text(
               '${booking.createdAt.year}-${booking.createdAt.month.toString().padLeft(2, '0')}-${booking.createdAt.day.toString().padLeft(2, '0')}',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),
-            if (booking.hospitalName != null || booking.hospitalNameAr != null) ...[
+            if (booking.hospitalName != null ||
+                booking.hospitalNameAr != null) ...[
               const SizedBox(height: 2),
-              Text(isAr ? booking.hospitalNameAr ?? '' : booking.hospitalName ?? '',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              Text(
+                isAr
+                    ? booking.hospitalNameAr ?? ''
+                    : booking.hospitalName ?? '',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
             ],
             if (isActive) ...[
               const SizedBox(height: 12),
               Row(
                 children: [
-                  if (!isIcu && (booking.status == BookingStatus.accepted || booking.status == BookingStatus.headingToPatient || booking.status == BookingStatus.pickedUp))
+                  if (!isIcu &&
+                      (booking.status == BookingStatus.accepted ||
+                          booking.status == BookingStatus.headingToPatient ||
+                          booking.status == BookingStatus.pickedUp))
                     Expanded(
                       child: OutlinedButton.icon(
                         icon: const Icon(Icons.map, size: 16),
-                        onPressed: () => Navigator.pushNamed(context, AppRoutes.ambulanceTracking, arguments: booking.id),
-                        label: Text(isAr ? 'تتبع' : 'Track', style: const TextStyle(fontSize: 12)),
-                        style: OutlinedButton.styleFrom(foregroundColor: Colors.teal),
+                        onPressed: () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.ambulanceTracking,
+                          arguments: booking.id,
+                        ),
+                        label: Text(
+                          isAr ? 'تتبع' : 'Track',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.teal,
+                        ),
                       ),
                     ),
-                  if (isIcu && booking.id != null && booking.status == BookingStatus.pending)
+                  if (isIcu &&
+                      booking.id != null &&
+                      booking.status == BookingStatus.pending)
                     Expanded(
                       child: OutlinedButton.icon(
                         icon: const Icon(Icons.cancel, size: 16),
                         onPressed: onCancel,
-                        label: Text(isAr ? 'إلغاء' : 'Cancel', style: const TextStyle(fontSize: 12)),
-                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                        label: Text(
+                          isAr ? 'إلغاء' : 'Cancel',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                        ),
                       ),
                     ),
-                  if (!isIcu && onCancel != null)
-                    const SizedBox(width: 8),
+                  if (!isIcu && onCancel != null) const SizedBox(width: 8),
                   if (!isIcu && onCancel != null)
                     Expanded(
                       child: OutlinedButton.icon(
                         icon: const Icon(Icons.cancel, size: 16),
                         onPressed: onCancel,
-                        label: Text(isAr ? 'إلغاء' : 'Cancel', style: const TextStyle(fontSize: 12)),
-                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                        label: Text(
+                          isAr ? 'إلغاء' : 'Cancel',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                        ),
                       ),
                     ),
                   const Spacer(),
                   TextButton(
-                    onPressed: () => Navigator.of(context).pushNamed(AppRoutes.bookingDetails, arguments: booking.id),
-                    child: Text(isAr ? 'التفاصيل' : 'Details', style: const TextStyle(fontSize: 12)),
+                    onPressed: () => Navigator.of(context).pushNamed(
+                      AppRoutes.bookingDetails,
+                      arguments: booking.id,
+                    ),
+                    child: Text(
+                      isAr ? 'التفاصيل' : 'Details',
+                      style: const TextStyle(fontSize: 12),
+                    ),
                   ),
                 ],
               ),
@@ -267,7 +378,9 @@ class _BookingCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: TextButton(
-                  onPressed: () => Navigator.of(context).pushNamed(AppRoutes.bookingDetails, arguments: booking.id),
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pushNamed(AppRoutes.bookingDetails, arguments: booking.id),
                   child: Text(isAr ? 'عرض التفاصيل' : 'View Details'),
                 ),
               ),

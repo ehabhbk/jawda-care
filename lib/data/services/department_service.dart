@@ -42,11 +42,28 @@ class DepartmentService {
         .collection('beds')
         .where('departmentId', isEqualTo: departmentId)
         .get();
+
+    var availableCount = 0;
+    String? hospitalId;
+    for (final bed in beds.docs) {
+      final data = bed.data();
+      if (data['status'] == 'available') availableCount++;
+      hospitalId = data['hospitalId'] ?? hospitalId;
+    }
+
     final batch = _firestore.batch();
     for (final bed in beds.docs) {
       batch.delete(bed.reference);
     }
     batch.delete(_firestore.collection('departments').doc(departmentId));
     await batch.commit();
+
+    if (hospitalId != null && hospitalId.isNotEmpty && availableCount > 0) {
+      try {
+        await _firestore.collection('hospitals').doc(hospitalId).update({
+          'availableBeds': FieldValue.increment(-availableCount),
+        });
+      } catch (_) {}
+    }
   }
 }

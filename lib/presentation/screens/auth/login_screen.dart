@@ -5,6 +5,7 @@ import '../../../core/routes/app_routes.dart';
 import '../../../core/utils/validators.dart';
 import '../../../l10n/localization.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_textfield.dart';
 
@@ -107,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Center(
                       child: Text(
                         t.translate('appName'),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
@@ -118,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Center(
                       child: Text(
                         t.translate('welcomeBack'),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           color: AppColors.textSecondary,
                         ),
@@ -182,9 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         Text(
                           t.translate('dontHaveAccount'),
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                          ),
+                          style: TextStyle(color: AppColors.textSecondary),
                         ),
                         TextButton(
                           onPressed: () => Navigator.of(
@@ -209,6 +208,27 @@ class _LoginScreenState extends State<LoginScreen> {
                 tooltip: 'من نحن',
                 onPressed: () =>
                     Navigator.of(context).pushNamed(AppRoutes.aboutUs),
+              ),
+            ),
+            Positioned(
+              top: 4,
+              left: 4,
+              child: IconButton(
+                icon: Icon(
+                  context.watch<ThemeProvider>().mode == ThemeMode.dark
+                      ? Icons.light_mode
+                      : Icons.dark_mode,
+                  color: AppColors.primary,
+                ),
+                tooltip: 'تغيير الوضع',
+                onPressed: () {
+                  final theme = context.read<ThemeProvider>();
+                  theme.setMode(
+                    theme.mode == ThemeMode.dark
+                        ? ThemeMode.light
+                        : ThemeMode.dark,
+                  );
+                },
               ),
             ),
           ],

@@ -30,8 +30,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final user = context.read<AuthProvider>().userModel;
     _nameController = TextEditingController(text: user?.name ?? '');
     _phoneController = TextEditingController(text: user?.phone ?? '');
-    _emergencyNameController = TextEditingController(text: user?.emergencyContactName ?? '');
-    _emergencyPhoneController = TextEditingController(text: user?.emergencyContactPhone ?? '');
+    _emergencyNameController = TextEditingController(
+      text: user?.emergencyContactName ?? '',
+    );
+    _emergencyPhoneController = TextEditingController(
+      text: user?.emergencyContactPhone ?? '',
+    );
     _selectedBloodType = user?.bloodType;
   }
 
@@ -50,8 +54,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final data = <String, dynamic>{
       'name': _nameController.text.trim(),
       'phone': _phoneController.text.trim(),
-      'emergencyContactName': _emergencyNameController.text.isNotEmpty ? _emergencyNameController.text.trim() : null,
-      'emergencyContactPhone': _emergencyPhoneController.text.isNotEmpty ? _emergencyPhoneController.text.trim() : null,
+      'emergencyContactName': _emergencyNameController.text.isNotEmpty
+          ? _emergencyNameController.text.trim()
+          : null,
+      'emergencyContactPhone': _emergencyPhoneController.text.isNotEmpty
+          ? _emergencyPhoneController.text.trim()
+          : null,
       'bloodType': _selectedBloodType,
     };
 
@@ -59,7 +67,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated'), backgroundColor: AppColors.success),
+        const SnackBar(
+          content: Text('Profile updated'),
+          backgroundColor: AppColors.success,
+        ),
       );
       Navigator.pop(context);
     }
@@ -100,15 +111,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   prefixIcon: const Icon(Icons.bloodtype),
                   filled: true,
                   fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                items: _bloodTypes.map((bt) => DropdownMenuItem(value: bt, child: Text(bt))).toList(),
+                items: _bloodTypes
+                    .map((bt) => DropdownMenuItem(value: bt, child: Text(bt)))
+                    .toList(),
                 onChanged: (v) => setState(() => _selectedBloodType = v),
               ),
               const SizedBox(height: 24),
               Text(
                 t.translate('emergencyContact'),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 12),
               CustomTextField(

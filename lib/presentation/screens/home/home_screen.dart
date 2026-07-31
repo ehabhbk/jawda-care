@@ -1,11 +1,11 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../l10n/localization.dart';
 import '../../../data/models/hospital_model.dart';
+import '../../../data/services/hospital_service.dart';
 import '../../../data/services/location_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/language_provider.dart';
@@ -19,7 +19,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<HospitalModel> _nearestHospitals = [];
+  Map<String, int> _availableCounts = {};
   bool _loadingLocation = true;
+  final _hospitalService = HospitalService();
 
   @override
   void initState() {
@@ -30,30 +32,32 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadNearestHospitals() async {
     try {
       final pos = await LocationService.getPosition(context);
-      if (pos == null) {
-        if (mounted) setState(() => _loadingLocation = false);
-        return;
+
+      final hospitals = await _hospitalService.getHospitalsWithAvailableBeds();
+      final counts = await _hospitalService.countAvailableBedsByHospital();
+
+      if (pos != null) {
+        hospitals.sort((a, b) {
+          final da = _distance(
+            pos.latitude,
+            pos.longitude,
+            a.latitude,
+            a.longitude,
+          );
+          final db = _distance(
+            pos.latitude,
+            pos.longitude,
+            b.latitude,
+            b.longitude,
+          );
+          return da.compareTo(db);
+        });
       }
-
-      final snap = await FirebaseFirestore.instance
-          .collection('hospitals')
-          .where('isActive', isEqualTo: true)
-          .get();
-
-      final hospitals = snap.docs
-          .map((d) => HospitalModel.fromMap(d.data(), d.id))
-          .where((h) => h.availableBeds > 0)
-          .toList();
-
-      hospitals.sort((a, b) {
-        final da = _distance(pos.latitude, pos.longitude, a.latitude, a.longitude);
-        final db = _distance(pos.latitude, pos.longitude, b.latitude, b.longitude);
-        return da.compareTo(db);
-      });
 
       if (mounted) {
         setState(() {
           _nearestHospitals = hospitals.take(5).toList();
+          _availableCounts = counts;
           _loadingLocation = false;
         });
       }
@@ -66,7 +70,8 @@ class _HomeScreenState extends State<HomeScreen> {
     const r = 6371;
     final dLat = _rad(lat2 - lat1);
     final dLon = _rad(lon2 - lon1);
-    final a = sin(dLat / 2) * sin(dLat / 2) +
+    final a =
+        sin(dLat / 2) * sin(dLat / 2) +
         cos(_rad(lat1)) * cos(_rad(lat2)) * sin(dLon / 2) * sin(dLon / 2);
     return r * 2 * asin(sqrt(a));
   }
@@ -105,31 +110,58 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 24),
             Text(
               t.translate('quickActions'),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 12),
             _buildQuickActions(context, t, isAr),
             const SizedBox(height: 24),
             Text(
-              isAr ? 'أقرب المستشفيات (أسرة متاحة)' : 'Nearest Hospitals (Available Beds)',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              isAr
+                  ? 'أقرب المستشفيات (أسرة متاحة)'
+                  : 'Nearest Hospitals (Available Beds)',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 12),
             _loadingLocation
                 ? const Center(child: CircularProgressIndicator())
                 : _nearestHospitals.isEmpty
-                    ? Text(isAr ? 'لا توجد مستشفيات قريبة بأسرة متاحة' : 'No nearby hospitals with available beds')
-                    : Column(
-                        children: _nearestHospitals.map((h) => Card(
-                          child: ListTile(
-                            leading: const Icon(Icons.local_hospital, color: Colors.teal),
-                            title: Text(isAr ? h.nameAr : h.name),
-                            subtitle: Text('${isAr ? "أسرة متاحة" : "Available beds"}: ${h.availableBeds}'),
-                            trailing: const Icon(Icons.arrow_forward_ios),
-                            onTap: () => Navigator.pushNamed(context, AppRoutes.icuBooking, arguments: h.id),
+                ? Text(
+                    isAr
+                        ? 'لا توجد مستشفيات قريبة بأسرة متاحة'
+                        : 'No nearby hospitals with available beds',
+                  )
+                : Column(
+                    children: _nearestHospitals
+                        .map(
+                          (h) => Card(
+                            child: ListTile(
+                              leading: const Icon(
+                                Icons.local_hospital,
+                                color: Colors.teal,
+                              ),
+                              title: Text(isAr ? h.nameAr : h.name),
+                              subtitle: Text(
+                                '${isAr ? "أسرة متاحة" : "Available beds"}: ${_availableCounts[h.id] ?? 0}',
+                              ),
+                              trailing: const Icon(Icons.arrow_forward_ios),
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.icuBooking,
+                                arguments: h.id,
+                              ),
+                            ),
                           ),
-                        )).toList(),
-                      ),
+                        )
+                        .toList(),
+                  ),
           ],
         ),
       ),
@@ -160,19 +192,30 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Text(
             isAr ? 'مرحباً، $name' : 'Hello, $name',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             isAr ? 'كيف يمكننا مساعدتك اليوم؟' : 'How can we help you today?',
-            style: TextStyle(fontSize: 16, color: Colors.white.withValues(alpha: 0.9)),
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.white.withValues(alpha: 0.9),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickActions(BuildContext context, AppLocalization t, bool isAr) {
+  Widget _buildQuickActions(
+    BuildContext context,
+    AppLocalization t,
+    bool isAr,
+  ) {
     return Row(
       children: [
         Expanded(
@@ -189,7 +232,8 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.airport_shuttle,
             color: AppColors.ambulanceRed,
             label: isAr ? 'إسعاف' : 'Ambulance',
-            onTap: () => Navigator.of(context).pushNamed(AppRoutes.ambulanceBooking),
+            onTap: () =>
+                Navigator.of(context).pushNamed(AppRoutes.ambulanceBooking),
           ),
         ),
         const SizedBox(width: 12),
@@ -226,7 +270,7 @@ class _ActionCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -249,7 +293,11 @@ class _ActionCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               label,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
               textAlign: TextAlign.center,
             ),
           ],

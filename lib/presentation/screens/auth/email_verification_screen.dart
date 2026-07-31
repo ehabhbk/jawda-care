@@ -9,7 +9,8 @@ class EmailVerificationScreen extends StatefulWidget {
   const EmailVerificationScreen({super.key});
 
   @override
-  State<EmailVerificationScreen> createState() => _EmailVerificationScreenState();
+  State<EmailVerificationScreen> createState() =>
+      _EmailVerificationScreenState();
 }
 
 class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
@@ -84,12 +85,20 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                   color: AppColors.warning.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.email_outlined, size: 50, color: AppColors.warning),
+                child: const Icon(
+                  Icons.email_outlined,
+                  size: 50,
+                  color: AppColors.warning,
+                ),
               ),
               const SizedBox(height: 32),
               Text(
                 isAr ? 'تحقق من بريدك الإلكتروني' : 'Verify Your Email',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 16),
               Text(
@@ -97,17 +106,21 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     ? 'تم إرسال رابط التحقق إلى بريدك الإلكتروني. يرجى النقر على الرابط لتفعيل حسابك.'
                     : 'A verification link has been sent to your email. Click the link to activate your account.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 8),
               Text(
-                isAr ? 'لم تصلك الرسالة؟ تحقق من مجلد البريد المزعج.' : "Didn't receive it? Check your spam folder.",
+                isAr
+                    ? 'لم تصلك الرسالة؟ تحقق من مجلد البريد المزعج.'
+                    : "Didn't receive it? Check your spam folder.",
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 40),
               CustomButton(
-                text: isAr ? 'تم التحقق - ادخل الآن' : "I've Verified - Continue",
+                text: isAr
+                    ? 'تم التحقق - ادخل الآن'
+                    : "I've Verified - Continue",
                 isLoading: _isChecking,
                 onPressed: _checkVerification,
               ),
@@ -127,7 +140,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                 },
                 child: Text(
                   isAr ? 'استخدام حساب آخر' : 'Use a different account',
-                  style: const TextStyle(color: AppColors.textSecondary),
+                  style: TextStyle(color: AppColors.textSecondary),
                 ),
               ),
             ],

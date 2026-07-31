@@ -43,7 +43,9 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
       _patientLocation = LatLng(pos.latitude, pos.longitude);
       _gettingLocation = false;
     });
-    _mapController?.animateCamera(CameraUpdate.newLatLngZoom(_patientLocation!, 14));
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(_patientLocation!, 14),
+    );
     _loadNearbyAmbulances();
   }
 
@@ -61,22 +63,33 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
     }).toList();
     ambulances.sort((a, b) {
       final distA = _distanceInKm(
-        _patientLocation!.latitude, _patientLocation!.longitude,
-        (a['currentLat'] ?? 0).toDouble(), (a['currentLng'] ?? 0).toDouble(),
+        _patientLocation!.latitude,
+        _patientLocation!.longitude,
+        (a['currentLat'] ?? 0).toDouble(),
+        (a['currentLng'] ?? 0).toDouble(),
       );
       final distB = _distanceInKm(
-        _patientLocation!.latitude, _patientLocation!.longitude,
-        (b['currentLat'] ?? 0).toDouble(), (b['currentLng'] ?? 0).toDouble(),
+        _patientLocation!.latitude,
+        _patientLocation!.longitude,
+        (b['currentLat'] ?? 0).toDouble(),
+        (b['currentLng'] ?? 0).toDouble(),
       );
       return distA.compareTo(distB);
     });
-    if (mounted) setState(() { _nearbyAmbulances = ambulances; _loadingAmbulances = false; });
+    if (mounted)
+      setState(() {
+        _nearbyAmbulances = ambulances;
+        _loadingAmbulances = false;
+      });
   }
 
   double _distanceInKm(double lat1, double lon1, double lat2, double lon2) {
     const p = 0.017453292519943295;
     const c = 6371;
-    final a = 0.5 - cos((lat2 - lat1) * p) / 2 + cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
+    final a =
+        0.5 -
+        cos((lat2 - lat1) * p) / 2 +
+        cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
     return c * (2 * asin(sqrt(a)));
   }
 
@@ -88,7 +101,9 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
 
   Future<void> _submit() async {
     if (_patientLocation == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى تحديد موقعك على الخريطة')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('يرجى تحديد موقعك على الخريطة')),
+      );
       return;
     }
 
@@ -111,29 +126,45 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
     if (bookingId != null && mounted) {
       if (_nearbyAmbulances.isNotEmpty) {
         final nearest = _nearbyAmbulances.first;
-        await FirebaseFirestore.instance.collection('bookings').doc(bookingId).update({
-          'ambulanceId': nearest['id'],
-          'driverName': nearest['driverName'],
-          'driverPhone': nearest['driverPhone'],
-          'plateNumber': nearest['plateNumber'],
-          'status': 'accepted',
-          'destinationLat': _destinationLocation?.latitude,
-          'destinationLng': _destinationLocation?.longitude,
-        });
-        await FirebaseFirestore.instance.collection('ambulances').doc(nearest['id']).update({
-          'status': 'occupied',
-        });
-        Navigator.of(context).pushReplacementNamed(AppRoutes.ambulanceTracking, arguments: bookingId);
+        await FirebaseFirestore.instance
+            .collection('bookings')
+            .doc(bookingId)
+            .update({
+              'ambulanceId': nearest['id'],
+              'driverName': nearest['driverName'],
+              'driverPhone': nearest['driverPhone'],
+              'plateNumber': nearest['plateNumber'],
+              'status': 'accepted',
+              'destinationLat': _destinationLocation?.latitude,
+              'destinationLng': _destinationLocation?.longitude,
+            });
+        await FirebaseFirestore.instance
+            .collection('ambulances')
+            .doc(nearest['id'])
+            .update({'status': 'occupied'});
+        Navigator.of(context).pushReplacementNamed(
+          AppRoutes.ambulanceTracking,
+          arguments: bookingId,
+        );
       } else {
         setState(() => _submitting = false);
         if (mounted) {
           showDialog(
             context: context,
             builder: (ctx) => AlertDialog(
-              title: Text(isAr ? 'لا توجد سيارات إسعاف' : 'No ambulances available'),
-              content: Text(isAr ? 'عذراً، لا توجد سيارات إسعاف متاحة حالياً. يرجى المحاولة لاحقاً.' : 'Sorry, no ambulances are available right now. Please try again later.'),
+              title: Text(
+                isAr ? 'لا توجد سيارات إسعاف' : 'No ambulances available',
+              ),
+              content: Text(
+                isAr
+                    ? 'عذراً، لا توجد سيارات إسعاف متاحة حالياً. يرجى المحاولة لاحقاً.'
+                    : 'Sorry, no ambulances are available right now. Please try again later.',
+              ),
               actions: [
-                TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(isAr ? 'حسناً' : 'OK')),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text(isAr ? 'حسناً' : 'OK'),
+                ),
               ],
             ),
           );
@@ -145,31 +176,43 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
   Set<Marker> _buildMarkers() {
     final markers = <Marker>{};
     if (_patientLocation != null) {
-      markers.add(Marker(
-        markerId: const MarkerId('patient'),
-        position: _patientLocation!,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-        infoWindow: const InfoWindow(title: 'موقعي'),
-      ));
+      markers.add(
+        Marker(
+          markerId: const MarkerId('patient'),
+          position: _patientLocation!,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          infoWindow: const InfoWindow(title: 'موقعي'),
+        ),
+      );
     }
     if (_destinationLocation != null) {
-      markers.add(Marker(
-        markerId: const MarkerId('destination'),
-        position: _destinationLocation!,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-        infoWindow: const InfoWindow(title: 'الوجهة'),
-      ));
+      markers.add(
+        Marker(
+          markerId: const MarkerId('destination'),
+          position: _destinationLocation!,
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueGreen,
+          ),
+          infoWindow: const InfoWindow(title: 'الوجهة'),
+        ),
+      );
     }
     for (final amb in _nearbyAmbulances) {
       final lat = (amb['currentLat'] ?? 0).toDouble();
       final lng = (amb['currentLng'] ?? 0).toDouble();
       if (lat != 0 || lng != 0) {
-        markers.add(Marker(
-          markerId: MarkerId('amb_${amb['id']}'),
-          position: LatLng(lat, lng),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
-          infoWindow: InfoWindow(title: 'سيارة إسعاف - ${amb['plateNumber'] ?? ''}'),
-        ));
+        markers.add(
+          Marker(
+            markerId: MarkerId('amb_${amb['id']}'),
+            position: LatLng(lat, lng),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueOrange,
+            ),
+            infoWindow: InfoWindow(
+              title: 'سيارة إسعاف - ${amb['plateNumber'] ?? ''}',
+            ),
+          ),
+        );
       }
     }
     return markers;
@@ -193,14 +236,19 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
                 : Stack(
                     children: [
                       GoogleMap(
+                        mapType: MapType.satellite,
                         initialCameraPosition: CameraPosition(
-                          target: _patientLocation ?? const LatLng(24.7136, 46.6753),
+                          target:
+                              _patientLocation ??
+                              const LatLng(24.7136, 46.6753),
                           zoom: 14,
                         ),
                         onMapCreated: (ctrl) => _mapController = ctrl,
                         onTap: (pos) {
                           setState(() {
-                            if (_destinationLocation == null) {
+                            if (_patientLocation == null) {
+                              _patientLocation = pos;
+                            } else if (_destinationLocation == null) {
                               _destinationLocation = pos;
                             } else {
                               _patientLocation = pos;
@@ -225,12 +273,37 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(isAr ? '📍 اضغط على الخريطة لتحديد:' : '📍 Tap map to set:', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                Text(
+                                  isAr
+                                      ? '📍 اضغط على الخريطة لتحديد:'
+                                      : '📍 Tap map to set:',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                                 const SizedBox(height: 4),
-                                Text('${isAr ? "موقعك" : "Your location"} ${_patientLocation != null ? "✓" : "..."}'),
-                                Text('${isAr ? "الوجهة" : "Destination"} ${_destinationLocation != null ? "✓" : "..."}'),
+                                if (_patientLocation == null) ...[
+                                  Text(
+                                    isAr
+                                        ? 'تعذر تحديد موقعك تلقائياً. اضغط على الخريطة لتحديد موقعك ثم الوجهة.'
+                                        : 'Could not get your location automatically. Tap the map to set your location, then the destination.',
+                                    style: const TextStyle(
+                                      color: AppColors.error,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                ],
+                                Text(
+                                  '${isAr ? "موقعك" : "Your location"} ${_patientLocation != null ? "✓" : "..."}',
+                                ),
+                                Text(
+                                  '${isAr ? "الوجهة" : "Destination"} ${_destinationLocation != null ? "✓" : "..."}',
+                                ),
                                 if (_nearbyAmbulances.isNotEmpty)
-                                  Text('${isAr ? "سيارات إسعاف متاحة" : "Available ambulances"}: ${_nearbyAmbulances.length}'),
+                                  Text(
+                                    '${isAr ? "سيارات إسعاف متاحة" : "Available ambulances"}: ${_nearbyAmbulances.length}',
+                                  ),
                               ],
                             ),
                           ),
@@ -245,8 +318,7 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (_loadingAmbulances)
-                    const LinearProgressIndicator(),
+                  if (_loadingAmbulances) const LinearProgressIndicator(),
                   if (_nearbyAmbulances.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
@@ -264,12 +336,17 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.ambulanceRed,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: _submitting ? null : _submit,
                       child: _submitting
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : Text(isAr ? 'طلب الإسعاف' : 'Request Ambulance', style: const TextStyle(fontSize: 18)),
+                          : Text(
+                              isAr ? 'طلب الإسعاف' : 'Request Ambulance',
+                              style: const TextStyle(fontSize: 18),
+                            ),
                     ),
                   ),
                 ],

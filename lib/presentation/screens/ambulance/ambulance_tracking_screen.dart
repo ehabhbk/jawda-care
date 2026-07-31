@@ -10,7 +10,8 @@ class AmbulanceTrackingScreen extends StatefulWidget {
   const AmbulanceTrackingScreen({super.key, required this.bookingId});
 
   @override
-  State<AmbulanceTrackingScreen> createState() => _AmbulanceTrackingScreenState();
+  State<AmbulanceTrackingScreen> createState() =>
+      _AmbulanceTrackingScreenState();
 }
 
 class _AmbulanceTrackingScreenState extends State<AmbulanceTrackingScreen> {
@@ -25,9 +26,13 @@ class _AmbulanceTrackingScreenState extends State<AmbulanceTrackingScreen> {
         title: Text(isAr ? 'تتبع الإسعاف' : 'Ambulance Tracking'),
       ),
       body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance.collection('bookings').doc(widget.bookingId).snapshots(),
+        stream: FirebaseFirestore.instance
+            .collection('bookings')
+            .doc(widget.bookingId)
+            .snapshots(),
         builder: (ctx, bookingSnap) {
-          if (!bookingSnap.hasData) return const Center(child: CircularProgressIndicator());
+          if (!bookingSnap.hasData)
+            return const Center(child: CircularProgressIndicator());
           final bookingData = bookingSnap.data!.data() as Map<String, dynamic>?;
 
           final status = bookingData?['status'] ?? 'pending';
@@ -42,16 +47,27 @@ class _AmbulanceTrackingScreenState extends State<AmbulanceTrackingScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.airport_shuttle, size: 80, color: AppColors.ambulanceRed),
+                  const Icon(
+                    Icons.airport_shuttle,
+                    size: 80,
+                    color: AppColors.ambulanceRed,
+                  ),
                   const SizedBox(height: 16),
-                  Text(isAr ? 'في انتظار تعيين سيارة إسعاف...' : 'Waiting for ambulance assignment...'),
+                  Text(
+                    isAr
+                        ? 'في انتظار تعيين سيارة إسعاف...'
+                        : 'Waiting for ambulance assignment...',
+                  ),
                 ],
               ),
             );
           }
 
           return StreamBuilder<DocumentSnapshot>(
-            stream: FirebaseFirestore.instance.collection('ambulances').doc(ambulanceId).snapshots(),
+            stream: FirebaseFirestore.instance
+                .collection('ambulances')
+                .doc(ambulanceId)
+                .snapshots(),
             builder: (ctx, ambSnap) {
               final ambData = ambSnap.data?.data() as Map<String, dynamic>?;
               final driverLat = (ambData?['currentLat'] ?? 0).toDouble();
@@ -63,29 +79,41 @@ class _AmbulanceTrackingScreenState extends State<AmbulanceTrackingScreen> {
               final distance = (driverLat != 0 && patientLat != 0)
                   ? _distanceInKm(driverLat, driverLng, patientLat, patientLng)
                   : null;
-              final eta = distance != null ? (distance / 40 * 60).round() : null;
+              final eta = distance != null
+                  ? (distance / 40 * 60).round()
+                  : null;
 
               final markers = <Marker>{
                 if (patientLat != 0)
                   Marker(
                     markerId: const MarkerId('patient'),
                     position: LatLng(patientLat, patientLng),
-                    icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+                    icon: BitmapDescriptor.defaultMarkerWithHue(
+                      BitmapDescriptor.hueBlue,
+                    ),
                     infoWindow: const InfoWindow(title: 'موقعي'),
                   ),
                 if (driverLat != 0)
                   Marker(
                     markerId: const MarkerId('driver'),
                     position: LatLng(driverLat, driverLng),
-                    icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-                    infoWindow: InfoWindow(title: isAr ? 'الإسعاف' : 'Ambulance'),
+                    icon: BitmapDescriptor.defaultMarkerWithHue(
+                      BitmapDescriptor.hueAzure,
+                    ),
+                    infoWindow: InfoWindow(
+                      title: isAr ? 'الإسعاف' : 'Ambulance',
+                    ),
                   ),
                 if (destLat != null && destLat != 0)
                   Marker(
                     markerId: const MarkerId('destination'),
                     position: LatLng(destLat, destLng),
-                    icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-                    infoWindow: InfoWindow(title: isAr ? 'الوجهة' : 'Destination'),
+                    icon: BitmapDescriptor.defaultMarkerWithHue(
+                      BitmapDescriptor.hueGreen,
+                    ),
+                    infoWindow: InfoWindow(
+                      title: isAr ? 'الوجهة' : 'Destination',
+                    ),
                   ),
               };
 
@@ -94,9 +122,14 @@ class _AmbulanceTrackingScreenState extends State<AmbulanceTrackingScreen> {
                   Expanded(
                     child: driverLat == 0
                         ? Center(
-                            child: Text(isAr ? 'جار الحصول على موقع الإسعاف...' : 'Getting ambulance location...'),
+                            child: Text(
+                              isAr
+                                  ? 'جار الحصول على موقع الإسعاف...'
+                                  : 'Getting ambulance location...',
+                            ),
                           )
                         : GoogleMap(
+                            mapType: MapType.satellite,
                             initialCameraPosition: CameraPosition(
                               target: LatLng(patientLat, patientLng),
                               zoom: 12,
@@ -106,7 +139,10 @@ class _AmbulanceTrackingScreenState extends State<AmbulanceTrackingScreen> {
                               if (driverLat != 0 && patientLat != 0)
                                 Polyline(
                                   polylineId: const PolylineId('route'),
-                                  points: [LatLng(driverLat, driverLng), LatLng(patientLat, patientLng)],
+                                  points: [
+                                    LatLng(driverLat, driverLng),
+                                    LatLng(patientLat, patientLng),
+                                  ],
                                   color: Colors.blue,
                                   width: 4,
                                 ),
@@ -115,10 +151,14 @@ class _AmbulanceTrackingScreenState extends State<AmbulanceTrackingScreen> {
                   ),
                   Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black12, blurRadius: 10),
+                      ],
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -127,22 +167,47 @@ class _AmbulanceTrackingScreenState extends State<AmbulanceTrackingScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _InfoChip(label: isAr ? 'المسافة' : 'Distance', value: distance < 1 ? '${(distance * 1000).round()} م' : '${distance.toStringAsFixed(1)} كم'),
-                              _InfoChip(label: isAr ? 'الوصول المتوقع' : 'ETA', value: eta! < 1 ? '${isAr ? "أقل من دقيقة" : "Less than 1 min"}' : '$eta ${isAr ? "دقيقة" : "min"}'),
+                              _InfoChip(
+                                label: isAr ? 'المسافة' : 'Distance',
+                                value: distance < 1
+                                    ? '${(distance * 1000).round()} م'
+                                    : '${distance.toStringAsFixed(1)} كم',
+                              ),
+                              _InfoChip(
+                                label: isAr ? 'الوصول المتوقع' : 'ETA',
+                                value: eta! < 1
+                                    ? '${isAr ? "أقل من دقيقة" : "Less than 1 min"}'
+                                    : '$eta ${isAr ? "دقيقة" : "min"}',
+                              ),
                             ],
                           ),
                           const SizedBox(height: 12),
                         ],
                         Row(
                           children: [
-                            const Icon(Icons.person, color: AppColors.ambulanceRed),
+                            const Icon(
+                              Icons.person,
+                              color: AppColors.ambulanceRed,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('$driverName | $plateNumber', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  if (driverPhone != '...') Text(driverPhone, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                  Text(
+                                    '$driverName | $plateNumber',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  if (driverPhone != '...')
+                                    Text(
+                                      driverPhone,
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
@@ -169,7 +234,10 @@ class _AmbulanceTrackingScreenState extends State<AmbulanceTrackingScreen> {
   double _distanceInKm(double lat1, double lon1, double lat2, double lon2) {
     const p = 0.017453292519943295;
     const c = 6371;
-    final a = 0.5 - cos((lat2 - lat1) * p) / 2 + cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
+    final a =
+        0.5 -
+        cos((lat2 - lat1) * p) / 2 +
+        cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
     return c * (2 * asin(sqrt(a)));
   }
 }
@@ -193,7 +261,9 @@ class _StatusChip extends StatelessWidget {
         color = Colors.orange;
         break;
       case 'pickedUp':
-        text = isAr ? '🚑 تم الاستلام - متجه للوجهة' : '🚑 Heading to destination';
+        text = isAr
+            ? '🚑 تم الاستلام - متجه للوجهة'
+            : '🚑 Heading to destination';
         color = Colors.teal;
         break;
       case 'arrived':
@@ -213,7 +283,15 @@ class _StatusChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
-      child: Text(text, textAlign: TextAlign.center, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 15)),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.bold,
+          fontSize: 15,
+        ),
+      ),
     );
   }
 }
@@ -227,7 +305,14 @@ class _InfoChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.ambulanceRed)),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.ambulanceRed,
+          ),
+        ),
         Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],
     );

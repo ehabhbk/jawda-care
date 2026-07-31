@@ -45,7 +45,7 @@ class AboutUsScreen extends StatelessWidget {
                 child: Text(
                   'نحن أعمال جودة الذكية لمؤسسها الريان محجوب عثمان مؤسسة تقنية تهدف للتحول الرقمي وتطوير حلول تقنية لسوق العمل وابتكار حلول تقنية في شتى المجالات وتغيير النظام التقليدي للمساعدة في التقدم في الخدمات',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     height: 1.9,
                     color: AppColors.textPrimary,

@@ -55,12 +55,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               const SizedBox(height: 24),
               Text(
                 t.translate('forgotPassword'),
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Enter your email to receive a reset link',
-                style: const TextStyle(color: AppColors.textSecondary),
+                style: TextStyle(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
@@ -82,7 +86,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 if (auth.errorMessage != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                    child: Text(auth.errorMessage!, style: const TextStyle(color: AppColors.error)),
+                    child: Text(
+                      auth.errorMessage!,
+                      style: const TextStyle(color: AppColors.error),
+                    ),
                   ),
                 CustomButton(
                   text: t.translate('sendResetLink'),

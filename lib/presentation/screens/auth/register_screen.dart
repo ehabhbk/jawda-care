@@ -40,7 +40,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Passwords do not match'), backgroundColor: AppColors.error),
+        const SnackBar(
+          content: Text('Passwords do not match'),
+          backgroundColor: AppColors.error,
+        ),
       );
       return;
     }
@@ -82,14 +85,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Icon(Icons.person_add, size: 40, color: Colors.white),
+                    child: const Icon(
+                      Icons.person_add,
+                      size: 40,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
                 Center(
                   child: Text(
                     t.translate('register'),
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -120,8 +131,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _passwordController,
                   label: t.translate('password'),
                   prefixIcon: Icons.lock_outlined,
-                  suffixIcon: _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                  onSuffixTap: () => setState(() => _obscurePassword = !_obscurePassword),
+                  suffixIcon: _obscurePassword
+                      ? Icons.visibility_off
+                      : Icons.visibility,
+                  onSuffixTap: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                   obscureText: _obscurePassword,
                   validator: Validators.password,
                 ),
@@ -130,10 +144,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _confirmPasswordController,
                   label: t.translate('confirmPassword'),
                   prefixIcon: Icons.lock_outlined,
-                  suffixIcon: _obscureConfirm ? Icons.visibility_off : Icons.visibility,
-                  onSuffixTap: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                  suffixIcon: _obscureConfirm
+                      ? Icons.visibility_off
+                      : Icons.visibility,
+                  onSuffixTap: () =>
+                      setState(() => _obscureConfirm = !_obscureConfirm),
                   obscureText: _obscureConfirm,
-                  validator: (v) => v != null && v.isEmpty ? 'Please confirm your password' : null,
+                  validator: (v) => v != null && v.isEmpty
+                      ? 'Please confirm your password'
+                      : null,
                 ),
                 const SizedBox(height: 24),
                 if (auth.errorMessage != null)
@@ -141,7 +160,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Text(
                       auth.errorMessage!,
-                      style: const TextStyle(color: AppColors.error, fontSize: 14),
+                      style: const TextStyle(
+                        color: AppColors.error,
+                        fontSize: 14,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -154,10 +176,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(t.translate('alreadyHaveAccount'), style: const TextStyle(color: AppColors.textSecondary)),
+                    Text(
+                      t.translate('alreadyHaveAccount'),
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
                     TextButton(
-                      onPressed: () => Navigator.of(context).pushReplacementNamed(AppRoutes.login),
-                      child: Text(t.translate('signIn'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                      onPressed: () => Navigator.of(
+                        context,
+                      ).pushReplacementNamed(AppRoutes.login),
+                      child: Text(
+                        t.translate('signIn'),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),

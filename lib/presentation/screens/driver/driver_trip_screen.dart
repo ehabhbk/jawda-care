@@ -47,7 +47,10 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
   }
 
   Future<void> _loadBooking() async {
-    final doc = await FirebaseFirestore.instance.collection('bookings').doc(widget.bookingId).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('bookings')
+        .doc(widget.bookingId)
+        .get();
     if (!doc.exists) return;
     final data = doc.data()!;
     setState(() {
@@ -65,17 +68,19 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
     _gpsTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
       try {
         final pos = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+          ),
         );
         if (!mounted) return;
         setState(() {
           _driverLat = pos.latitude;
           _driverLng = pos.longitude;
         });
-        await FirebaseFirestore.instance.collection('ambulances').doc(widget.ambulanceId).update({
-          'currentLat': _driverLat,
-          'currentLng': _driverLng,
-        });
+        await FirebaseFirestore.instance
+            .collection('ambulances')
+            .doc(widget.ambulanceId)
+            .update({'currentLat': _driverLat, 'currentLng': _driverLng});
       } catch (_) {}
     });
   }
@@ -86,27 +91,35 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
     if (status == 'pickedUp') data['pickedUpAt'] = now;
     if (status == 'arrived') data['completedAt'] = now;
 
-    await FirebaseFirestore.instance.collection('bookings').doc(widget.bookingId).update(data);
+    await FirebaseFirestore.instance
+        .collection('bookings')
+        .doc(widget.bookingId)
+        .update(data);
     if (mounted) setState(() => _tripStatus = status);
 
     if (status == 'arrived') {
-      await FirebaseFirestore.instance.collection('ambulances').doc(widget.ambulanceId).update({
-        'status': 'available',
-      });
+      await FirebaseFirestore.instance
+          .collection('ambulances')
+          .doc(widget.ambulanceId)
+          .update({'status': 'available'});
     }
   }
 
   Future<void> _rejectTrip() async {
-    await FirebaseFirestore.instance.collection('bookings').doc(widget.bookingId).update({
-      'status': 'rejected',
-      'ambulanceId': FieldValue.delete(),
-      'driverName': FieldValue.delete(),
-      'driverPhone': FieldValue.delete(),
-      'plateNumber': FieldValue.delete(),
-    });
-    await FirebaseFirestore.instance.collection('ambulances').doc(widget.ambulanceId).update({
-      'status': 'available',
-    });
+    await FirebaseFirestore.instance
+        .collection('bookings')
+        .doc(widget.bookingId)
+        .update({
+          'status': 'rejected',
+          'ambulanceId': FieldValue.delete(),
+          'driverName': FieldValue.delete(),
+          'driverPhone': FieldValue.delete(),
+          'plateNumber': FieldValue.delete(),
+        });
+    await FirebaseFirestore.instance
+        .collection('ambulances')
+        .doc(widget.ambulanceId)
+        .update({'status': 'available'});
     if (mounted) Navigator.pop(context);
   }
 
@@ -123,14 +136,18 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
         Marker(
           markerId: const MarkerId('destination'),
           position: LatLng(_destLat!, _destLng!),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueGreen,
+          ),
           infoWindow: const InfoWindow(title: 'الوجهة'),
         ),
       if (_driverLat != 0)
         Marker(
           markerId: const MarkerId('driver'),
           position: LatLng(_driverLat, _driverLng),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueOrange,
+          ),
           infoWindow: const InfoWindow(title: 'موقعي'),
         ),
     };
@@ -150,7 +167,10 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
           TextButton.icon(
             onPressed: _rejectTrip,
             icon: const Icon(Icons.close, color: Colors.white),
-            label: Text(isAr ? 'رفض' : 'Reject', style: const TextStyle(color: Colors.white)),
+            label: Text(
+              isAr ? 'رفض' : 'Reject',
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -167,7 +187,9 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                     onMapCreated: (ctrl) => _mapController = ctrl,
                     markers: _buildMarkers(),
                     polylines: {
-                      if (_patientLat != null && _destLat != null && _destLat != 0)
+                      if (_patientLat != null &&
+                          _destLat != null &&
+                          _destLat != 0)
                         Polyline(
                           polylineId: const PolylineId('route_to_patient'),
                           points: [
@@ -194,24 +216,40 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                 ),
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black12, blurRadius: 10),
+                    ],
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         children: [
-                          const CircleAvatar(backgroundColor: AppColors.ambulanceRed, child: Icon(Icons.person)),
+                          const CircleAvatar(
+                            backgroundColor: AppColors.ambulanceRed,
+                            child: Icon(Icons.person),
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(_bookingData?['userName'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                Text(_bookingData?['userPhone'] ?? '', style: const TextStyle(color: Colors.grey)),
+                                Text(
+                                  _bookingData?['userName'] ?? '',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                Text(
+                                  _bookingData?['userPhone'] ?? '',
+                                  style: const TextStyle(color: Colors.grey),
+                                ),
                               ],
                             ),
                           ),
@@ -226,10 +264,16 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                               backgroundColor: Colors.blue,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                             onPressed: () => _updateTripStatus('pickedUp'),
-                            child: Text(isAr ? '✅ تم الوصول إلى المريض' : '✅ Picked up patient'),
+                            child: Text(
+                              isAr
+                                  ? '✅ تم الوصول إلى المريض'
+                                  : '✅ Picked up patient',
+                            ),
                           ),
                         )
                       else if (_tripStatus == 'pickedUp')
@@ -240,13 +284,20 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                               backgroundColor: Colors.teal,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                             onPressed: () => _updateTripStatus('arrived'),
-                            child: Text(isAr ? '🏥 تم الوصول إلى الوجهة' : '🏥 Arrived at destination'),
+                            child: Text(
+                              isAr
+                                  ? '🏥 تم الوصول إلى الوجهة'
+                                  : '🏥 Arrived at destination',
+                            ),
                           ),
                         )
-                      else if (_tripStatus == 'arrived' || _tripStatus == 'completed')
+                      else if (_tripStatus == 'arrived' ||
+                          _tripStatus == 'completed')
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -256,11 +307,20 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.check_circle, color: Colors.green),
+                              const Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                              ),
                               const SizedBox(width: 8),
                               Text(
-                                isAr ? 'تم الانتهاء من الرحلة' : 'Trip completed',
-                                style: const TextStyle(color: Colors.green, fontSize: 18, fontWeight: FontWeight.bold),
+                                isAr
+                                    ? 'تم الانتهاء من الرحلة'
+                                    : 'Trip completed',
+                                style: const TextStyle(
+                                  color: Colors.green,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ],
                           ),

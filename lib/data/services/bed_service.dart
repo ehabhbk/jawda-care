@@ -31,8 +31,23 @@ class BedService {
         });
   }
 
+  Future<void> _adjustHospitalAvailableBeds(
+    String hospitalId,
+    int delta,
+  ) async {
+    if (hospitalId.isEmpty) return;
+    try {
+      await _firestore.collection('hospitals').doc(hospitalId).update({
+        'availableBeds': FieldValue.increment(delta),
+      });
+    } catch (_) {}
+  }
+
   Future<void> addBed(BedModel bed) async {
     await _firestore.collection('beds').add(bed.toMap());
+    if (bed.status == 'available') {
+      await _adjustHospitalAvailableBeds(bed.hospitalId, 1);
+    }
   }
 
   Future<void> updateBed({
@@ -53,14 +68,37 @@ class BedService {
     String? patientId,
     String? bookingId,
   }) async {
+    final oldDoc = await _firestore.collection('beds').doc(bedId).get();
+    final oldStatus = oldDoc.exists
+        ? (oldDoc.data()?['status'] ?? 'available')
+        : 'available';
+    final hospitalId = oldDoc.exists
+        ? (oldDoc.data()?['hospitalId'] ?? '') as String
+        : '';
+
     final data = <String, dynamic>{'status': status};
     if (patientName != null) data['patientName'] = patientName;
     if (patientId != null) data['patientId'] = patientId;
     if (bookingId != null) data['bookingId'] = bookingId;
     await _firestore.collection('beds').doc(bedId).update(data);
+
+    if (hospitalId.isNotEmpty && oldStatus != status) {
+      if (oldStatus == 'available') {
+        await _adjustHospitalAvailableBeds(hospitalId, -1);
+      } else if (status == 'available') {
+        await _adjustHospitalAvailableBeds(hospitalId, 1);
+      }
+    }
   }
 
   Future<void> deleteBed(String bedId) async {
+    final doc = await _firestore.collection('beds').doc(bedId).get();
+    if (doc.exists) {
+      final data = doc.data()!;
+      if (data['status'] == 'available') {
+        await _adjustHospitalAvailableBeds(data['hospitalId'] ?? '', -1);
+      }
+    }
     await _firestore.collection('beds').doc(bedId).delete();
   }
 }

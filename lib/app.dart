@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'core/routes/app_routes.dart';
+import 'core/constants/app_colors.dart';
 import 'presentation/providers/auth_provider.dart';
+import 'presentation/providers/theme_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'l10n/localization.dart';
 import 'presentation/providers/language_provider.dart';
@@ -66,12 +68,18 @@ class _JawdaCareAppState extends State<JawdaCareApp>
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
+    final themeMode = context.watch<ThemeProvider>().mode;
 
     return MaterialApp(
       title: 'Jawda Care',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
+      builder: (context, child) {
+        AppColors.brightness = Theme.of(context).brightness;
+        return child!;
+      },
       locale: lang.locale,
       supportedLocales: const [Locale('en'), Locale('ar')],
       localizationsDelegates: [

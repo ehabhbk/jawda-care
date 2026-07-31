@@ -24,56 +24,63 @@ class BookingProvider extends ChangeNotifier {
 
   void loadUserBookings(String userId) {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
     _bookingsSub?.cancel();
-    _bookingsSub = _bookingService.getUserBookings(userId).listen(
-      (bookings) {
-        _bookings = bookings;
-        _isLoading = false;
-        notifyListeners();
-      },
-      onError: (error) {
-        _errorMessage = error.toString();
-        _isLoading = false;
-        notifyListeners();
-      },
-    );
+    _bookingsSub = _bookingService
+        .getUserBookings(userId)
+        .listen(
+          (bookings) {
+            _bookings = bookings;
+            _isLoading = false;
+            notifyListeners();
+          },
+          onError: (error) {
+            _errorMessage = error.toString();
+            _isLoading = false;
+            notifyListeners();
+          },
+        );
   }
 
   void loadHospitalBookings(String hospitalId) {
     _isLoading = true;
     notifyListeners();
     _bookingsSub?.cancel();
-    _bookingsSub = _bookingService.getHospitalBookings(hospitalId).listen(
-      (bookings) {
-        _bookings = bookings;
-        _isLoading = false;
-        notifyListeners();
-      },
-      onError: (error) {
-        _errorMessage = error.toString();
-        _isLoading = false;
-        notifyListeners();
-      },
-    );
+    _bookingsSub = _bookingService
+        .getHospitalBookings(hospitalId)
+        .listen(
+          (bookings) {
+            _bookings = bookings;
+            _isLoading = false;
+            notifyListeners();
+          },
+          onError: (error) {
+            _errorMessage = error.toString();
+            _isLoading = false;
+            notifyListeners();
+          },
+        );
   }
 
   void loadPendingHospitalBookings(String hospitalId) {
     _isLoading = true;
     notifyListeners();
     _bookingsSub?.cancel();
-    _bookingsSub = _bookingService.getPendingHospitalBookings(hospitalId).listen(
-      (bookings) {
-        _bookings = bookings;
-        _isLoading = false;
-        notifyListeners();
-      },
-      onError: (error) {
-        _errorMessage = error.toString();
-        _isLoading = false;
-        notifyListeners();
-      },
-    );
+    _bookingsSub = _bookingService
+        .getPendingHospitalBookings(hospitalId)
+        .listen(
+          (bookings) {
+            _bookings = bookings;
+            _isLoading = false;
+            notifyListeners();
+          },
+          onError: (error) {
+            _errorMessage = error.toString();
+            _isLoading = false;
+            notifyListeners();
+          },
+        );
   }
 
   Future<String?> createBookingFromModel(BookingModel bookingModel) async {
