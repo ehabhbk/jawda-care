@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../data/models/hospital_model.dart';
 import '../../../data/models/booking_model.dart';
 import '../../../data/services/hospital_service.dart';
+import '../../../data/services/location_service.dart';
 import '../../providers/booking_provider.dart';
 import '../../providers/auth_provider.dart';
 
@@ -167,7 +167,15 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
 
     try {
-      final pos = await Geolocator.getCurrentPosition();
+      final pos = await LocationService.getPosition(context);
+      if (pos == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('يجب تشغيل الموقع لتأكيد الحجز')),
+          );
+        }
+        return;
+      }
 
       final patientName = otherName ?? auth.userModel!.name;
       final patientPhone = otherPhone ?? auth.userModel!.phone;

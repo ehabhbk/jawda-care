@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../data/services/location_service.dart';
 
 class DriverTripScreen extends StatefulWidget {
   final String bookingId;
@@ -58,7 +59,9 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
     });
   }
 
-  void _startGpsUpdates() {
+  Future<void> _startGpsUpdates() async {
+    final ok = await LocationService.ensureLocationEnabled(context);
+    if (!ok || !mounted) return;
     _gpsTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
       try {
         final pos = await Geolocator.getCurrentPosition(

@@ -1,10 +1,10 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../data/models/hospital_model.dart';
+import '../../../data/services/location_service.dart';
 
 class IcuListScreen extends StatefulWidget {
   const IcuListScreen({super.key});
@@ -35,14 +35,14 @@ class _IcuListScreenState extends State<IcuListScreen> {
           .map((d) => HospitalModel.fromMap(d.data(), d.id))
           .toList();
 
-      try {
-        final pos = await Geolocator.getCurrentPosition();
+      final pos = await LocationService.getPosition(context);
+      if (pos != null) {
         hospitals.sort((a, b) {
           final da = _distance(pos.latitude, pos.longitude, a.latitude, a.longitude);
           final db = _distance(pos.latitude, pos.longitude, b.latitude, b.longitude);
           return da.compareTo(db);
         });
-      } catch (_) {}
+      }
 
       if (mounted) setState(() { _hospitals = hospitals; _loading = false; });
     } catch (_) {

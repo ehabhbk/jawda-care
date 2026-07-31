@@ -283,6 +283,53 @@ class AdminProvider extends ChangeNotifier {
     await _firestore.collection('hospitals').doc(hospitalId).update({'isActive': isActive});
   }
 
+  Future<bool> deleteHospital(String hospitalId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final batch = _firestore.batch();
+      batch.delete(_firestore.collection('hospitals').doc(hospitalId));
+      batch.delete(_firestore.collection('users').doc(hospitalId));
+
+      final ambulances = await _firestore
+          .collection('ambulances')
+          .where('hospitalId', isEqualTo: hospitalId)
+          .get();
+      for (final a in ambulances.docs) {
+        batch.delete(a.reference);
+      }
+
+      final departments = await _firestore
+          .collection('departments')
+          .where('hospitalId', isEqualTo: hospitalId)
+          .get();
+      for (final d in departments.docs) {
+        batch.delete(d.reference);
+      }
+
+      final beds = await _firestore
+          .collection('beds')
+          .where('hospitalId', isEqualTo: hospitalId)
+          .get();
+      for (final b in beds.docs) {
+        batch.delete(b.reference);
+      }
+
+      await batch.commit();
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> deleteAmbulance(String ambulanceId) async {
     await _firestore.collection('ambulances').doc(ambulanceId).delete();
   }

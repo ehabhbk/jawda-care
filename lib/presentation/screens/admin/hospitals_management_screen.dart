@@ -36,17 +36,49 @@ class HospitalsManagementScreen extends StatelessWidget {
                 child: ListTile(
                   leading: Icon(Icons.local_hospital, color: isActive == true ? Colors.teal : Colors.grey),
                   title: Text(data['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('${data['city'] ?? ''} | ${data['phone'] ?? ''}'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${data['city'] ?? ''} | ${data['phone'] ?? ''}'),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isActive == true
+                              ? Colors.green.withValues(alpha: 0.15)
+                              : Colors.red.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          isActive == true ? 'نشطة' : 'متوقفة',
+                          style: TextStyle(
+                            color: isActive == true ? Colors.green : Colors.red,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: Icon(isActive == true ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
+                        tooltip: isActive == true ? 'إيقاف (لن تظهر للمرضى)' : 'تفعيل',
+                        icon: Icon(
+                          isActive == true ? Icons.block : Icons.check_circle,
+                          color: isActive == true ? Colors.orange : Colors.green,
+                        ),
                         onPressed: () => admin.toggleHospitalActive(id, isActive != true),
                       ),
                       IconButton(
                         icon: const Icon(Icons.edit, color: Colors.blue),
                         onPressed: () => _editHospital(context, id, data),
+                      ),
+                      IconButton(
+                        tooltip: 'حذف',
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _confirmDelete(context, admin, id, data['name'] ?? ''),
                       ),
                     ],
                   ),
@@ -64,6 +96,36 @@ class HospitalsManagementScreen extends StatelessWidget {
       context,
       MaterialPageRoute(builder: (_) => _EditHospitalScreen(hospitalId: id, hospitalData: data)),
     );
+  }
+
+  Future<void> _confirmDelete(
+      BuildContext context, AdminProvider admin, String id, String name) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف المستشفى'),
+        content: Text(
+          'هل أنت متأكد من حذف "$name"؟\nسيتم حذف كل الأسرة والأقسام وسيارات الإسعاف التابعة لها.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('حذف', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final success = await admin.deleteHospital(id);
+      if (success && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم حذف المستشفى')),
+        );
+      }
+    }
   }
 }
 

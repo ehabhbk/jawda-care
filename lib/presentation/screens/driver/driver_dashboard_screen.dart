@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../../data/models/ambulance_model.dart';
+import '../../../data/services/booking_notification_service.dart';
 import '../../../core/routes/app_routes.dart';
 import '../auth/login_screen.dart';
 
@@ -37,6 +38,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
         setState(() {
           _ambulance = AmbulanceModel.fromMap(snap.docs.first.data(), snap.docs.first.id);
         });
+        BookingNotificationWatcher.instance.startDriverWatch(snap.docs.first.id);
       }
     });
   }

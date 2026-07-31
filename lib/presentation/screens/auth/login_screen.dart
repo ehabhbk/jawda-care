@@ -153,8 +153,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 CustomButton(
                   text: t.translate('login'),
                   isLoading: auth.isLoading,
-                  backgroundColor: Colors.lightBlueAccent,
-                  textColor: Colors.white,
                   onPressed: _login,
                 ),
                 const SizedBox(height: 24),

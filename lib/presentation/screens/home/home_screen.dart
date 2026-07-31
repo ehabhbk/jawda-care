@@ -2,11 +2,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../l10n/localization.dart';
 import '../../../data/models/hospital_model.dart';
+import '../../../data/services/location_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/language_provider.dart';
 
@@ -29,22 +29,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadNearestHospitals() async {
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        setState(() => _loadingLocation = false);
+      final pos = await LocationService.getPosition(context);
+      if (pos == null) {
+        if (mounted) setState(() => _loadingLocation = false);
         return;
       }
 
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          setState(() => _loadingLocation = false);
-          return;
-        }
-      }
-
-      final pos = await Geolocator.getCurrentPosition();
       final snap = await FirebaseFirestore.instance
           .collection('hospitals')
           .where('isActive', isEqualTo: true)

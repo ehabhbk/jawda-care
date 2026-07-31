@@ -6,6 +6,7 @@ import '../../data/models/hospital_model.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/hospital_service.dart';
 import '../../data/services/notification_service.dart';
+import '../../data/services/booking_notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -72,6 +73,10 @@ class AuthProvider extends ChangeNotifier {
         if (_userModel!.role == 'hospital' && _userModel!.hospitalId != null) {
           _hospitalAccount = await _hospitalService.getHospitalById(_userModel!.hospitalId!);
         }
+        BookingNotificationWatcher.instance.start(
+          userId: uid,
+          hospitalId: _userModel!.role == 'hospital' ? _userModel!.hospitalId : null,
+        );
       }
     } catch (e) {
       _errorMessage = e.toString();
@@ -157,11 +162,13 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    BookingNotificationWatcher.instance.stop();
     await _authService.signOut();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('session_start');
     _userModel = null;
     _hospitalAccount = null;
+    _errorMessage = null;
     notifyListeners();
   }
 

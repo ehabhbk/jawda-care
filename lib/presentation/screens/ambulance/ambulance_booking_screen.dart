@@ -2,11 +2,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../data/models/booking_model.dart';
+import '../../../data/services/location_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/booking_provider.dart';
 
@@ -33,19 +33,18 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
   }
 
   Future<void> _getCurrentLocation() async {
-    try {
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      );
-      setState(() {
-        _patientLocation = LatLng(pos.latitude, pos.longitude);
-        _gettingLocation = false;
-      });
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(_patientLocation!, 14));
-      _loadNearbyAmbulances();
-    } catch (_) {
+    final pos = await LocationService.getPosition(context);
+    if (!mounted) return;
+    if (pos == null) {
       setState(() => _gettingLocation = false);
+      return;
     }
+    setState(() {
+      _patientLocation = LatLng(pos.latitude, pos.longitude);
+      _gettingLocation = false;
+    });
+    _mapController?.animateCamera(CameraUpdate.newLatLngZoom(_patientLocation!, 14));
+    _loadNearbyAmbulances();
   }
 
   Future<void> _loadNearbyAmbulances() async {

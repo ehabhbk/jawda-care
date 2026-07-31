@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,37 +8,54 @@ class NotificationService {
   static final _localNotifications = FlutterLocalNotificationsPlugin();
 
   static Future<void> init() async {
-    await _requestPermission();
+    try {
+      await _requestPermission();
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings();
-    await _localNotifications.initialize(
-      const InitializationSettings(android: androidSettings, iOS: iosSettings),
-      onDidReceiveNotificationResponse: (response) {},
-    );
+      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const iosSettings = DarwinInitializationSettings();
+      await _localNotifications.initialize(
+        const InitializationSettings(android: androidSettings, iOS: iosSettings),
+        onDidReceiveNotificationResponse: (response) {},
+      );
 
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-    FirebaseMessaging.onBackgroundMessage(_handleBackgroundMessage);
+      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+      FirebaseMessaging.onBackgroundMessage(_handleBackgroundMessage);
+    } catch (e) {
+      debugPrint('NotificationService.init failed (no GMS?): $e');
+    }
   }
 
   static Future<void> _requestPermission() async {
-    await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    try {
+      await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    } catch (e) {
+      debugPrint('requestPermission failed (no GMS?): $e');
+    }
   }
 
   static Future<String?> getToken() async {
-    return _messaging.getToken();
+    try {
+      return await _messaging.getToken();
+    } catch (e) {
+      debugPrint('getToken failed (no GMS?): $e');
+      return null;
+    }
   }
 
   static Future<void> saveTokenToFirestore(String userId) async {
     final token = await getToken();
     if (token == null) return;
-    await FirebaseFirestore.instance.collection('users').doc(userId).set({
-      'fcmToken': token,
-    }, SetOptions(merge: true));
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(userId).set({
+        'fcmToken': token,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('saveTokenToFirestore failed: $e');
+    }
   }
 
   static void _handleForegroundMessage(RemoteMessage message) {
@@ -52,6 +70,10 @@ class NotificationService {
     if (notification != null) {
       _showLocalNotification(notification.title ?? '', notification.body ?? '');
     }
+  }
+
+  static Future<void> showLocalNotification(String title, String body) async {
+    await _showLocalNotification(title, body);
   }
 
   static Future<void> _showLocalNotification(String title, String body) async {
