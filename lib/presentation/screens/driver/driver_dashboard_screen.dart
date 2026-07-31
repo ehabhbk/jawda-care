@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../../data/models/ambulance_model.dart';
 import '../../../core/routes/app_routes.dart';
+import '../auth/login_screen.dart';
 
 class DriverDashboardScreen extends StatefulWidget {
   const DriverDashboardScreen({super.key});
@@ -64,7 +65,15 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => auth.signOut(),
+            onPressed: () async {
+              await auth.signOut();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
+            },
           ),
         ],
       ),

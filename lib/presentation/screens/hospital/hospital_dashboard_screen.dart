@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../../core/routes/app_routes.dart';
+import '../auth/login_screen.dart';
 
 class HospitalDashboardScreen extends StatelessWidget {
   const HospitalDashboardScreen({super.key});
@@ -18,7 +19,15 @@ class HospitalDashboardScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => auth.signOut(),
+            onPressed: () async {
+              await auth.signOut();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
+            },
           ),
         ],
       ),

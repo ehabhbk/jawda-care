@@ -78,19 +78,22 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const SizedBox(height: 40),
                 Center(
-                  child: Image.asset(
-                    'assets/images/logo.jpg',
-                    width: 120,
-                    height: 120,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) => Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(20),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Image.asset(
+                      'assets/images/icon.png',
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Icon(Icons.medical_services, size: 40, color: Colors.white),
                       ),
-                      child: const Icon(Icons.medical_services, size: 40, color: Colors.white),
                     ),
                   ),
                 ),
@@ -150,6 +153,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 CustomButton(
                   text: t.translate('login'),
                   isLoading: auth.isLoading,
+                  backgroundColor: Colors.lightBlueAccent,
+                  textColor: Colors.white,
                   onPressed: _login,
                 ),
                 const SizedBox(height: 24),
