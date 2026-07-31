@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/hospital_model.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/hospital_service.dart';
+import '../../data/services/notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -14,6 +16,7 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   bool _justRegistered = false;
+  bool _isReady = false;
 
   UserModel? get userModel => _userModel;
   HospitalModel? get hospitalAccount => _hospitalAccount;
@@ -21,6 +24,7 @@ class AuthProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isLoggedIn => _userModel != null;
   bool get justRegistered => _justRegistered;
+  bool get isReady => _isReady;
   bool get isEmailVerified => _authService.currentUser?.emailVerified ?? false;
   User? get firebaseUser => _authService.currentUser;
   bool get isAdmin => _userModel?.role == 'admin';
@@ -31,13 +35,30 @@ class AuthProvider extends ChangeNotifier {
   AuthProvider() {
     _authService.authStateChanges.listen((User? user) async {
       if (user != null) {
-        await loadUserData(user.uid);
+        if (await _isSessionExpired()) {
+          await signOut();
+        } else {
+          await loadUserData(user.uid);
+        }
       } else {
         _userModel = null;
         _hospitalAccount = null;
-        notifyListeners();
       }
+      _isReady = true;
+      notifyListeners();
     });
+  }
+
+  Future<bool> _isSessionExpired() async {
+    final prefs = await SharedPreferences.getInstance();
+    final start = prefs.getInt('session_start');
+    if (start == null) return false;
+    return DateTime.now().millisecondsSinceEpoch - start > 3600000;
+  }
+
+  Future<void> _saveSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('session_start', DateTime.now().millisecondsSinceEpoch);
   }
 
   Future<void> loadUserData(String uid) async {
@@ -46,8 +67,11 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       _userModel = await _authService.getUserData(uid);
-      if (_userModel != null && _userModel!.role == 'hospital' && _userModel!.hospitalId != null) {
-        _hospitalAccount = await _hospitalService.getHospitalById(_userModel!.hospitalId!);
+      if (_userModel != null) {
+        await NotificationService.saveTokenToFirestore(uid);
+        if (_userModel!.role == 'hospital' && _userModel!.hospitalId != null) {
+          _hospitalAccount = await _hospitalService.getHospitalById(_userModel!.hospitalId!);
+        }
       }
     } catch (e) {
       _errorMessage = e.toString();
@@ -75,6 +99,7 @@ class AuthProvider extends ChangeNotifier {
         phone: phone,
         role: 'patient',
       );
+      await _saveSession();
       _justRegistered = true;
       _isLoading = false;
       notifyListeners();
@@ -97,6 +122,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       _userModel = await _authService.signIn(email: email, password: password);
+      await _saveSession();
       if (_userModel != null && _userModel!.role == 'hospital' && _userModel!.hospitalId != null) {
         _hospitalAccount = await _hospitalService.getHospitalById(_userModel!.hospitalId!);
       }
@@ -116,6 +142,12 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> checkSession() async {
+    if (_userModel != null && await _isSessionExpired()) {
+      await signOut();
+    }
+  }
+
   Future<bool> checkEmailVerified() async {
     return _authService.isEmailVerified();
   }
@@ -126,6 +158,8 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> signOut() async {
     await _authService.signOut();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('session_start');
     _userModel = null;
     _hospitalAccount = null;
     notifyListeners();

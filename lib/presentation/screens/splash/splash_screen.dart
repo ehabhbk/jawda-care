@@ -16,15 +16,19 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigate();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _navigate());
   }
 
   Future<void> _navigate() async {
-    await Future.delayed(const Duration(seconds: 2));
+    final authProvider = context.read<AuthProvider>();
+
+    for (var i = 0; i < 30; i++) {
+      if (authProvider.isReady) break;
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
 
     if (!mounted) return;
 
-    final authProvider = context.read<AuthProvider>();
     final isLoggedIn = authProvider.isLoggedIn;
     final justRegistered = authProvider.justRegistered;
     final role = authProvider.userModel?.role;

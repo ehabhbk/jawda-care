@@ -119,6 +119,23 @@ class BookingProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> cancelBooking({
+    required String bookingId,
+    String? reason,
+  }) async {
+    try {
+      await _bookingService.updateBookingStatus(
+        bookingId: bookingId,
+        status: 'cancelled',
+        cancellationReason: reason,
+      );
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    }
+  }
+
   Future<bool> assignAmbulanceAndStartTrip({
     required String bookingId,
     required String ambulanceId,

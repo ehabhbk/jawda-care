@@ -17,6 +17,9 @@ class AppRoutes {
   static const String editProfile = '/edit-profile';
 
   static const String adminDashboard = '/admin-dashboard';
+  static const String hospitalsManagement = '/hospitals-management';
+  static const String ambulancesManagement = '/ambulances-management';
+  static const String adminsManagement = '/admins-management';
   static const String addHospital = '/add-hospital';
   static const String addAmbulance = '/add-ambulance';
   static const String addAdmin = '/add-admin';

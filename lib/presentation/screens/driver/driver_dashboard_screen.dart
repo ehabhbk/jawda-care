@@ -56,9 +56,11 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(_ambulance != null ? 'سيارة ${_ambulance!.plateNumber}' : 'لوحة تحكم السائق'),
+        title: Text(_ambulance != null ? '${isAr ? "سيارة" : "Car"} ${_ambulance!.plateNumber}' : (isAr ? 'لوحة تحكم السائق' : 'Driver Dashboard')),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -68,7 +70,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       ),
       body: _ambulance == null
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
+          : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,14 +81,14 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('رقم اللوحة: ${_ambulance!.plateNumber}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text('${isAr ? "رقم اللوحة" : "Plate"}: ${_ambulance!.plateNumber}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
-                          Text('السائق: ${_ambulance!.driverName}'),
-                          Text('الهاتف: ${_ambulance!.driverPhone}'),
+                          Text('${isAr ? "السائق" : "Driver"}: ${_ambulance!.driverName}'),
+                          Text('${isAr ? "الهاتف" : "Phone"}: ${_ambulance!.driverPhone}'),
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              const Text('الحالة: '),
+                              Text(isAr ? 'الحالة: ' : 'Status: '),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                 decoration: BoxDecoration(
@@ -99,10 +101,10 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                                 ),
                                 child: Text(
                                   _ambulance!.status == 'available'
-                                      ? 'متاح'
+                                      ? (isAr ? 'متاح' : 'Available')
                                       : _ambulance!.status == 'maintenance'
-                                          ? 'صيانة'
-                                          : 'مشغول',
+                                          ? (isAr ? 'صيانة' : 'Maintenance')
+                                          : (isAr ? 'مشغول' : 'Occupied'),
                                   style: const TextStyle(color: Colors.white),
                                 ),
                               ),
@@ -113,7 +115,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text('تغيير الحالة:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(isAr ? 'تغيير الحالة:' : 'Change Status:', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -121,7 +123,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                         child: ElevatedButton(
                           onPressed: _ambulance!.status == 'available' ? null : () => _updateStatus('available'),
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                          child: const Text('متاح'),
+                          child: Text(isAr ? 'متاح' : 'Available'),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -129,55 +131,152 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                         child: ElevatedButton(
                           onPressed: _ambulance!.status == 'maintenance' ? null : () => _updateStatus('maintenance'),
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-                          child: const Text('صيانة'),
+                          child: Text(isAr ? 'صيانة' : 'Maintenance'),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  const Text('الطلبات المتاحة:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: StreamBuilder<QuerySnapshot>(
+                  const SizedBox(height: 20),
+                  if (_ambulance!.id != null)
+                    StreamBuilder<QuerySnapshot>(
                       stream: FirebaseFirestore.instance
                           .collection('bookings')
-                          .where('status', isEqualTo: 'accepted')
-                          .where('ambulanceId', isNull: true)
-                          .orderBy('createdAt', descending: true)
+                          .where('ambulanceId', isEqualTo: _ambulance!.id)
                           .snapshots(),
-                      builder: (ctx, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
-                        }
-                        final docs = snapshot.data?.docs ?? [];
-                        if (docs.isEmpty) {
-                          return const Center(child: Text('لا توجد طلبات متاحة'));
-                        }
-                        return ListView.builder(
-                          itemCount: docs.length,
-                          itemBuilder: (ctx, i) {
-                            final data = docs[i].data() as Map<String, dynamic>;
-                            return Card(
-                              child: ListTile(
-                                leading: const Icon(Icons.local_hospital, color: Colors.teal),
-                                title: Text(data['userName'] ?? ''),
-                                subtitle: Text(data['hospitalNameAr'] ?? data['hospitalName'] ?? ''),
-                                trailing: const Icon(Icons.map),
-                                onTap: () => Navigator.pushNamed(
-                                  context,
-                                  AppRoutes.driverTrip,
-                                  arguments: {'bookingId': docs[i].id, 'ambulanceId': _ambulance!.id},
-                                ),
-                              ),
-                            );
-                          },
+                      builder: (ctx, snap) {
+                        if (!snap.hasData) return const SizedBox.shrink();
+                        final bookings = snap.data!.docs;
+                        final total = bookings.length;
+                        final completed = bookings.where((d) => (d.data() as Map)['status'] == 'completed').length;
+                        final inProgress = bookings.where((d) {
+                          final s = (d.data() as Map)['status'];
+                          return s == 'headingToPatient' || s == 'pickedUp';
+                        }).length;
+                        final cancelled = bookings.where((d) => (d.data() as Map)['status'] == 'cancelled').length;
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(isAr ? 'إحصائيات الرحلات' : 'Trip Stats', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(child: _StatCard(icon: Icons.receipt_long, label: isAr ? 'إجمالي' : 'Total', value: '$total', color: Colors.blueGrey)),
+                                const SizedBox(width: 8),
+                                Expanded(child: _StatCard(icon: Icons.sync, label: isAr ? 'قيد التنفيذ' : 'Active', value: '$inProgress', color: Colors.blue)),
+                                const SizedBox(width: 8),
+                                Expanded(child: _StatCard(icon: Icons.check_circle, label: isAr ? 'مكتملة' : 'Done', value: '$completed', color: Colors.green)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(child: _StatCard(icon: Icons.cancel, label: isAr ? 'ملغية' : 'Cancelled', value: '$cancelled', color: Colors.grey)),
+                                const SizedBox(width: 8),
+                                Expanded(child: Container()),
+                                const SizedBox(width: 8),
+                                Expanded(child: Container()),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            const Divider(),
+                            const SizedBox(height: 8),
+                          ],
                         );
                       },
                     ),
+                  Text(isAr ? 'الرحلات المخصصة:' : 'Assigned Trips:', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('bookings')
+                        .where('ambulanceId', isEqualTo: _ambulance!.id)
+                        .where('status', whereIn: ['accepted', 'headingToPatient', 'pickedUp'])
+                        .snapshots(),
+                    builder: (ctx, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final docs = snapshot.data?.docs ?? [];
+                      if (docs.isEmpty) {
+                        return Center(child: Text(isAr ? 'لا توجد رحلات مخصصة' : 'No assigned trips'));
+                      }
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: docs.length,
+                        itemBuilder: (ctx, i) {
+                          final data = docs[i].data() as Map<String, dynamic>;
+                          final status = data['status'] ?? '';
+                          String statusText;
+                          Color statusColor;
+                          switch (status) {
+                            case 'accepted':
+                              statusText = isAr ? 'مقبول' : 'Accepted';
+                              statusColor = Colors.blue;
+                              break;
+                            case 'headingToPatient':
+                              statusText = isAr ? 'في الطريق للمريض' : 'Heading to patient';
+                              statusColor = Colors.orange;
+                              break;
+                            case 'pickedUp':
+                              statusText = isAr ? 'تم الاستلام' : 'Picked up';
+                              statusColor = Colors.teal;
+                              break;
+                            default:
+                              statusText = status;
+                              statusColor = Colors.grey;
+                          }
+                          return Card(
+                            child: ListTile(
+                              leading: const Icon(Icons.airport_shuttle, color: Colors.red),
+                              title: Text(data['userName'] ?? ''),
+                              subtitle: Text('$statusText'),
+                              trailing: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(8)),
+                                child: Text(statusText, style: const TextStyle(color: Colors.white, fontSize: 11)),
+                              ),
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.driverTrip,
+                                arguments: {'bookingId': docs[i].id, 'ambulanceId': _ambulance!.id},
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
                   ),
                 ],
               ),
             ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  const _StatCard({required this.icon, required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 2),
+            Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+            Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey), textAlign: TextAlign.center),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'core/routes/app_routes.dart';
+import 'presentation/providers/auth_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'l10n/localization.dart';
 import 'presentation/providers/language_provider.dart';
@@ -20,6 +21,9 @@ import 'presentation/screens/bookings/booking_details_screen.dart';
 import 'presentation/screens/profile/profile_screen.dart';
 import 'presentation/screens/profile/edit_profile_screen.dart';
 import 'presentation/screens/admin/admin_dashboard_screen.dart';
+import 'presentation/screens/admin/hospitals_management_screen.dart';
+import 'presentation/screens/admin/ambulances_management_screen.dart';
+import 'presentation/screens/admin/admins_management_screen.dart';
 import 'presentation/screens/admin/add_hospital_screen.dart';
 import 'presentation/screens/admin/add_ambulance_screen.dart';
 import 'presentation/screens/admin/add_admin_screen.dart';
@@ -30,8 +34,32 @@ import 'presentation/screens/hospital/booking_requests_screen.dart';
 import 'presentation/screens/driver/driver_dashboard_screen.dart';
 import 'presentation/screens/driver/driver_trip_screen.dart';
 
-class JawdaCareApp extends StatelessWidget {
+class JawdaCareApp extends StatefulWidget {
   const JawdaCareApp({super.key});
+
+  @override
+  State<JawdaCareApp> createState() => _JawdaCareAppState();
+}
+
+class _JawdaCareAppState extends State<JawdaCareApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      context.read<AuthProvider>().checkSession();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,6 +121,12 @@ class JawdaCareApp extends StatelessWidget {
             return MaterialPageRoute(builder: (_) => const EditProfileScreen());
           case AppRoutes.adminDashboard:
             return MaterialPageRoute(builder: (_) => const AdminDashboardScreen());
+          case AppRoutes.hospitalsManagement:
+            return MaterialPageRoute(builder: (_) => const HospitalsManagementScreen());
+          case AppRoutes.ambulancesManagement:
+            return MaterialPageRoute(builder: (_) => const AmbulancesManagementScreen());
+          case AppRoutes.adminsManagement:
+            return MaterialPageRoute(builder: (_) => const AdminsManagementScreen());
           case AppRoutes.addHospital:
             return MaterialPageRoute(builder: (_) => const AddHospitalScreen());
           case AppRoutes.addAmbulance:

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'app.dart';
 import 'firebase_options.dart';
+import 'data/services/notification_service.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/icu_provider.dart';
 import 'presentation/providers/ambulance_provider.dart';
@@ -18,6 +19,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await NotificationService.init();
 
   runApp(
     MultiProvider(

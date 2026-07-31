@@ -1,9 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../../../data/services/booking_service.dart';
-import '../../../data/services/bed_service.dart';
+import 'package:geolocator/geolocator.dart';
+import '../../../core/constants/app_colors.dart';
 
 class DriverTripScreen extends StatefulWidget {
   final String bookingId;
@@ -20,110 +20,118 @@ class DriverTripScreen extends StatefulWidget {
 }
 
 class _DriverTripScreenState extends State<DriverTripScreen> {
-  final BookingService _bookingService = BookingService();
-  final BedService _bedService = BedService();
-
+  GoogleMapController? _mapController;
   Map<String, dynamic>? _bookingData;
-  String? _tripId;
-  String _tripStatus = 'heading_to_patient';
+  String _tripStatus = 'headingToPatient';
   double? _patientLat;
   double? _patientLng;
-  double? _hospitalLat;
-  double? _hospitalLng;
+  double? _destLat;
+  double? _destLng;
+  double _driverLat = 0;
+  double _driverLng = 0;
+  Timer? _gpsTimer;
 
   @override
   void initState() {
     super.initState();
     _loadBooking();
+    _startGpsUpdates();
+  }
+
+  @override
+  void dispose() {
+    _gpsTimer?.cancel();
+    _mapController?.dispose();
+    super.dispose();
   }
 
   Future<void> _loadBooking() async {
     final doc = await FirebaseFirestore.instance.collection('bookings').doc(widget.bookingId).get();
-    if (doc.exists) {
-      final data = doc.data()!;
-      setState(() {
-        _bookingData = data;
-        _patientLat = (data['userLat'] ?? 0).toDouble();
-        _patientLng = (data['userLng'] ?? 0).toDouble();
-      });
-      _loadHospital();
-      _createTrip();
-    }
+    if (!doc.exists) return;
+    final data = doc.data()!;
+    setState(() {
+      _bookingData = data;
+      _patientLat = (data['userLat'] ?? 0).toDouble();
+      _patientLng = (data['userLng'] ?? 0).toDouble();
+      _destLat = (data['destinationLat'] ?? 0).toDouble();
+      _destLng = (data['destinationLng'] ?? 0).toDouble();
+    });
   }
 
-  Future<void> _loadHospital() async {
-    if (_bookingData?['hospitalId'] == null) return;
-    final doc = await FirebaseFirestore.instance.collection('hospitals').doc(_bookingData!['hospitalId']).get();
-    if (doc.exists) {
-      final data = doc.data()!;
-      setState(() {
-        _hospitalLat = (data['latitude'] ?? 0).toDouble();
-        _hospitalLng = (data['longitude'] ?? 0).toDouble();
-      });
-    }
-  }
-
-  Future<void> _createTrip() async {
-    if (_patientLat == null || _hospitalLat == null) return;
-    final tripData = {
-      'bookingId': widget.bookingId,
-      'ambulanceId': widget.ambulanceId,
-      'driverId': FirebaseAuth.instance.currentUser!.uid,
-      'patientId': _bookingData!['userId'],
-      'hospitalId': _bookingData!['hospitalId'],
-      'patientLat': _patientLat,
-      'patientLng': _patientLng,
-      'hospitalLat': _hospitalLat,
-      'hospitalLng': _hospitalLng,
-      'driverLat': 0,
-      'driverLng': 0,
-      'status': 'heading_to_patient',
-      'createdAt': DateTime.now().toIso8601String(),
-    };
-    final ref = await FirebaseFirestore.instance.collection('trips').add(tripData);
-    setState(() => _tripId = ref.id);
+  void _startGpsUpdates() {
+    _gpsTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+      try {
+        final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        );
+        if (!mounted) return;
+        setState(() {
+          _driverLat = pos.latitude;
+          _driverLng = pos.longitude;
+        });
+        await FirebaseFirestore.instance.collection('ambulances').doc(widget.ambulanceId).update({
+          'currentLat': _driverLat,
+          'currentLng': _driverLng,
+        });
+      } catch (_) {}
+    });
   }
 
   Future<void> _updateTripStatus(String status) async {
-    if (_tripId == null) return;
-    final data = <String, dynamic>{'status': status};
     final now = DateTime.now().toIso8601String();
-    switch (status) {
-      case 'picked_up':
-        data['arrivedAtPatientAt'] = now;
-        break;
-      case 'arrived':
-        data['arrivedAtHospitalAt'] = now;
-        break;
+    final data = <String, dynamic>{'status': status};
+    if (status == 'pickedUp') data['pickedUpAt'] = now;
+    if (status == 'arrived') data['completedAt'] = now;
+
+    await FirebaseFirestore.instance.collection('bookings').doc(widget.bookingId).update(data);
+    if (mounted) setState(() => _tripStatus = status);
+
+    if (status == 'arrived') {
+      await FirebaseFirestore.instance.collection('ambulances').doc(widget.ambulanceId).update({
+        'status': 'available',
+      });
     }
-    await FirebaseFirestore.instance.collection('trips').doc(_tripId!).update(data);
-    setState(() => _tripStatus = status);
   }
 
-  Future<void> _arrivedAtHospital() async {
-    await _updateTripStatus('arrived');
-    await _bookingService.updateBookingStatus(
-      bookingId: widget.bookingId,
-      status: 'completed',
-    );
+  Future<void> _rejectTrip() async {
+    await FirebaseFirestore.instance.collection('bookings').doc(widget.bookingId).update({
+      'status': 'rejected',
+      'ambulanceId': FieldValue.delete(),
+      'driverName': FieldValue.delete(),
+      'driverPhone': FieldValue.delete(),
+      'plateNumber': FieldValue.delete(),
+    });
+    await FirebaseFirestore.instance.collection('ambulances').doc(widget.ambulanceId).update({
+      'status': 'available',
+    });
+    if (mounted) Navigator.pop(context);
+  }
 
-    final bedId = _bookingData?['bedId'];
-    if (bedId != null) {
-      await _bedService.updateBedStatus(
-        bedId: bedId,
-        status: 'occupied',
-        patientName: _bookingData?['userName'],
-        patientId: _bookingData?['userId'],
-        bookingId: widget.bookingId,
-      );
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم الوصول إلى المستشفى')),
-      );
-      Navigator.pop(context);
-    }
+  Set<Marker> _buildMarkers() {
+    final markers = <Marker>{
+      if (_patientLat != null)
+        Marker(
+          markerId: const MarkerId('patient'),
+          position: LatLng(_patientLat!, _patientLng!),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          infoWindow: InfoWindow(title: _bookingData?['userName'] ?? 'مريض'),
+        ),
+      if (_destLat != null && _destLat != 0)
+        Marker(
+          markerId: const MarkerId('destination'),
+          position: LatLng(_destLat!, _destLng!),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          infoWindow: const InfoWindow(title: 'الوجهة'),
+        ),
+      if (_driverLat != 0)
+        Marker(
+          markerId: const MarkerId('driver'),
+          position: LatLng(_driverLat, _driverLng),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+          infoWindow: const InfoWindow(title: 'موقعي'),
+        ),
+    };
+    return markers;
   }
 
   @override
@@ -131,8 +139,17 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
+        backgroundColor: AppColors.ambulanceRed,
         title: Text(isAr ? 'الرحلة' : 'Trip'),
+        actions: [
+          TextButton.icon(
+            onPressed: _rejectTrip,
+            icon: const Icon(Icons.close, color: Colors.white),
+            label: Text(isAr ? 'رفض' : 'Reject', style: const TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
       body: _patientLat == null
           ? const Center(child: CircularProgressIndicator())
@@ -142,66 +159,110 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                   child: GoogleMap(
                     initialCameraPosition: CameraPosition(
                       target: LatLng(_patientLat!, _patientLng!),
-                      zoom: 12,
+                      zoom: 13,
                     ),
-                    markers: {
-                      if (_patientLat != null)
-                        Marker(
-                          markerId: const MarkerId('patient'),
-                          position: LatLng(_patientLat!, _patientLng!),
-                          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-                          infoWindow: InfoWindow(title: _bookingData?['userName'] ?? 'المريض'),
-                        ),
-                      if (_hospitalLat != null)
-                        Marker(
-                          markerId: const MarkerId('hospital'),
-                          position: LatLng(_hospitalLat!, _hospitalLng!),
-                          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-                          infoWindow: const InfoWindow(title: 'المستشفى'),
-                        ),
-                    },
+                    onMapCreated: (ctrl) => _mapController = ctrl,
+                    markers: _buildMarkers(),
                     polylines: {
-                      if (_patientLat != null && _hospitalLat != null)
+                      if (_patientLat != null && _destLat != null && _destLat != 0)
                         Polyline(
-                          polylineId: const PolylineId('route'),
+                          polylineId: const PolylineId('route_to_patient'),
                           points: [
+                            if (_driverLat != 0) LatLng(_driverLat, _driverLng),
                             LatLng(_patientLat!, _patientLng!),
-                            LatLng(_hospitalLat!, _hospitalLng!),
                           ],
                           color: Colors.blue,
                           width: 4,
                         ),
+                      if (_destLat != null && _destLat != 0)
+                        Polyline(
+                          polylineId: const PolylineId('route_to_dest'),
+                          points: [
+                            LatLng(_patientLat!, _patientLng!),
+                            LatLng(_destLat!, _destLng!),
+                          ],
+                          color: Colors.teal,
+                          width: 3,
+                        ),
                     },
+                    myLocationEnabled: true,
+                    myLocationButtonEnabled: true,
                   ),
                 ),
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        Text('${isAr ? "المريض" : "Patient"}: ${_bookingData?['userName'] ?? ""}', style: const TextStyle(fontSize: 16)),
-                        Text('${isAr ? "المستشفى" : "Hospital"}: ${_bookingData?['hospitalNameAr'] ?? _bookingData?['hospitalName'] ?? ""}'),
-                        const SizedBox(height: 8),
-                        if (_tripStatus == 'heading_to_patient')
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                              onPressed: () => _updateTripStatus('picked_up'),
-                              child: Text(isAr ? 'تم الوصول إلى المريض' : 'Arrived at patient'),
-                            ),
-                          )
-                        else if (_tripStatus == 'picked_up')
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-                              onPressed: _arrivedAtHospital,
-                              child: Text(isAr ? 'تم الوصول إلى المستشفى' : 'Arrived at hospital'),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          const CircleAvatar(backgroundColor: AppColors.ambulanceRed, child: Icon(Icons.person)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(_bookingData?['userName'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                Text(_bookingData?['userPhone'] ?? '', style: const TextStyle(color: Colors.grey)),
+                              ],
                             ),
                           ),
-                      ],
-                    ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (_tripStatus == 'headingToPatient')
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: () => _updateTripStatus('pickedUp'),
+                            child: Text(isAr ? '✅ تم الوصول إلى المريض' : '✅ Picked up patient'),
+                          ),
+                        )
+                      else if (_tripStatus == 'pickedUp')
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.teal,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: () => _updateTripStatus('arrived'),
+                            child: Text(isAr ? '🏥 تم الوصول إلى الوجهة' : '🏥 Arrived at destination'),
+                          ),
+                        )
+                      else if (_tripStatus == 'arrived' || _tripStatus == 'completed')
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.check_circle, color: Colors.green),
+                              const SizedBox(width: 8),
+                              Text(
+                                isAr ? 'تم الانتهاء من الرحلة' : 'Trip completed',
+                                style: const TextStyle(color: Colors.green, fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],

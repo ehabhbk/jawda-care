@@ -26,8 +26,24 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     if (!mounted) return;
 
     if (verified) {
-      auth.loadUserData(auth.firebaseUser!.uid);
-      Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+      await auth.loadUserData(auth.firebaseUser!.uid);
+      if (!mounted) return;
+      final role = auth.userModel?.role;
+      String route;
+      switch (role) {
+        case 'admin':
+          route = AppRoutes.adminDashboard;
+          break;
+        case 'hospital':
+          route = AppRoutes.hospitalDashboard;
+          break;
+        case 'driver':
+          route = AppRoutes.driverDashboard;
+          break;
+        default:
+          route = AppRoutes.home;
+      }
+      Navigator.of(context).pushReplacementNamed(route);
     } else {
       _isChecking = false;
       setState(() {});

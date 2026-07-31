@@ -74,19 +74,108 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
     });
   }
 
-  Future<void> _book() async {
+  Future<void> _showBookingDialog() async {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isAr ? 'حجز السرير' : 'Book Bed'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(isAr ? 'هذا الحجز لمن؟' : 'Who is this booking for?'),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.person),
+                onPressed: () => Navigator.pop(ctx, 'myself'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, padding: const EdgeInsets.symmetric(vertical: 14)),
+                label: Text(isAr ? 'لنفسي' : 'Myself', style: const TextStyle(color: Colors.white)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.people),
+                onPressed: () => Navigator.pop(ctx, 'other'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey, padding: const EdgeInsets.symmetric(vertical: 14)),
+                label: Text(isAr ? 'لمريض آخر' : 'Another patient', style: const TextStyle(color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (choice == null || !mounted) return;
+
+    if (choice == 'other') {
+      await _showOtherPatientForm(isAr);
+    } else {
+      await _submitBooking(null, null);
+    }
+  }
+
+  Future<void> _showOtherPatientForm(bool isAr) async {
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isAr ? 'بيانات المريض' : 'Patient Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              decoration: InputDecoration(labelText: isAr ? 'اسم المريض' : 'Patient name', border: const OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: phoneCtrl,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(labelText: isAr ? 'رقم الهاتف' : 'Phone number', border: const OutlineInputBorder()),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(isAr ? 'إلغاء' : 'Cancel')),
+          ElevatedButton(
+            onPressed: nameCtrl.text.trim().isEmpty || phoneCtrl.text.trim().isEmpty
+                ? null
+                : () => Navigator.pop(ctx, true),
+            child: Text(isAr ? 'تأكيد' : 'Confirm'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true && mounted) {
+      await _submitBooking(nameCtrl.text.trim(), phoneCtrl.text.trim());
+    }
+  }
+
+  Future<void> _submitBooking(String? otherName, String? otherPhone) async {
     if (_selectedBedId == null) return;
 
     final auth = context.read<AuthProvider>();
     final booking = context.read<BookingProvider>();
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
 
     try {
       final pos = await Geolocator.getCurrentPosition();
 
+      final patientName = otherName ?? auth.userModel!.name;
+      final patientPhone = otherPhone ?? auth.userModel!.phone;
+
       final bookingModel = BookingModel(
         userId: auth.userModel!.id!,
-        userName: auth.userModel!.name,
-        userPhone: auth.userModel!.phone,
+        userName: patientName,
+        userPhone: patientPhone,
         userLat: pos.latitude,
         userLng: pos.longitude,
         bookingType: BookingType.icu,
@@ -103,11 +192,11 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
         hospitalAddress: _hospital!.addressAr.isNotEmpty ? _hospital!.addressAr : _hospital!.address,
       );
 
-      await booking.createBookingFromModel(bookingModel);
+      final id = await booking.createBookingFromModel(bookingModel);
 
-      if (mounted) {
+      if (mounted && id != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم إرسال طلب الحجز. في انتظار موافقة المستشفى')),
+          SnackBar(content: Text(isAr ? 'تم إرسال طلب الحجز. في انتظار موافقة المستشفى' : 'Booking request sent. Waiting for hospital approval.')),
         );
         Navigator.pushReplacementNamed(context, AppRoutes.myBookings);
       }
@@ -143,7 +232,15 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
                           Text(isAr ? _hospital!.nameAr : _hospital!.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 4),
                           Text(isAr ? _hospital!.addressAr : _hospital!.address),
-                          Text('${isAr ? "أسرة متاحة" : "Available beds"}: ${_hospital!.availableBeds}'),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Icon(Icons.bed, color: Colors.teal, size: 20),
+                              const SizedBox(width: 6),
+                              Text('${isAr ? "إجمالي الأسرة النشطة" : "Total active beds"}: ${_hospital!.availableBeds}',
+                                style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.teal)),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -151,40 +248,52 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
                   const SizedBox(height: 16),
                   Text(isAr ? 'اختر القسم' : 'Select Department', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  ..._departments.map((d) => RadioListTile<String>(
-                    title: Text(d['nameAr'] ?? d['name']),
-                    subtitle: Text('${(_beds[d['id']] ?? []).length} ${isAr ? "أسرة متاحة" : "beds available"}'),
-                    value: d['id'],
-                    groupValue: _selectedDeptId,
-                    onChanged: (_beds[d['id']] ?? []).isEmpty ? null : (v) {
-                      setState(() {
-                        _selectedDeptId = v;
-                        _selectedBedId = null;
-                      });
-                    },
+                  ..._departments.map((d) => Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: RadioListTile<String>(
+                      title: Text(d['nameAr'] ?? d['name'], style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Row(
+                        children: [
+                          const Icon(Icons.bed, size: 16, color: Colors.teal),
+                          const SizedBox(width: 4),
+                          Text('${(_beds[d['id']] ?? []).length} ${isAr ? "أسرة متاحة" : "beds available"}'),
+                        ],
+                      ),
+                      value: d['id'],
+                      groupValue: _selectedDeptId,
+                      onChanged: (_beds[d['id']] ?? []).isEmpty ? null : (v) {
+                        setState(() {
+                          _selectedDeptId = v;
+                          _selectedBedId = null;
+                        });
+                      },
+                    ),
                   )),
                   if (_selectedDeptId != null && (_beds[_selectedDeptId] ?? []).isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Text(isAr ? 'اختر السرير' : 'Select Bed', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    ...(_beds[_selectedDeptId] ?? []).map((b) => RadioListTile<String>(
-                      title: Text(b['nameAr'] ?? b['name']),
-                      value: b['id'],
-                      groupValue: _selectedBedId,
-                      onChanged: (v) {
-                        setState(() {
-                          _selectedBedId = v;
-                          _selectedBedName = b['name'];
-                          _selectedBedNameAr = b['nameAr'];
-                        });
-                      },
+                    ...(_beds[_selectedDeptId] ?? []).map((b) => Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: RadioListTile<String>(
+                        title: Text(b['nameAr'] ?? b['name']),
+                        value: b['id'],
+                        groupValue: _selectedBedId,
+                        onChanged: (v) {
+                          setState(() {
+                            _selectedBedId = v;
+                            _selectedBedName = b['name'];
+                            _selectedBedNameAr = b['nameAr'];
+                          });
+                        },
+                      ),
                     )),
                   ],
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _selectedBedId == null ? null : _book,
+                      onPressed: _selectedBedId == null ? null : _showBookingDialog,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         backgroundColor: Colors.teal,

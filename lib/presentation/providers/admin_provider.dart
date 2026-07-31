@@ -21,6 +21,15 @@ class AdminProvider extends ChangeNotifier {
   Stream<QuerySnapshot> get ambulancesStream =>
       _firestore.collection('ambulances').orderBy('createdAt', descending: true).snapshots();
 
+  Future<bool> checkEmailExists(String email) async {
+    try {
+      final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+      return methods.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> addHospital({
     required String name,
     required String nameAr,
@@ -39,6 +48,17 @@ class AdminProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final exists = await checkEmailExists(email);
+      if (exists) {
+        _errorMessage = 'البريد الإلكتروني مستخدم بالفعل في حساب آخر';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      final admin = FirebaseAuth.instance.currentUser;
+      final adminUid = admin!.uid;
+
       final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -60,19 +80,62 @@ class AdminProvider extends ChangeNotifier {
         phone: phone,
         email: email,
         password: password,
-        adminUid: FirebaseAuth.instance.currentUser!.uid,
+        adminUid: adminUid,
       );
 
       await _firestore.collection('hospitals').doc(hospitalId).set(hospital.toMap());
 
-      await _authService.signUp(
-        name: name,
-        email: email,
-        password: password,
-        phone: phone,
-        role: 'hospital',
-        hospitalId: hospitalId,
-      );
+      await _firestore.collection('users').doc(hospitalId).set({
+        'id': hospitalId,
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'role': 'hospital',
+        'hospitalId': hospitalId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateHospital({
+    required String hospitalId,
+    required String name,
+    required String nameAr,
+    required String address,
+    required String addressAr,
+    required String city,
+    required String cityAr,
+    required double latitude,
+    required double longitude,
+    required String phone,
+    required bool isActive,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _firestore.collection('hospitals').doc(hospitalId).update({
+        'name': name,
+        'nameAr': nameAr,
+        'address': address,
+        'addressAr': addressAr,
+        'city': city,
+        'cityAr': cityAr,
+        'latitude': latitude,
+        'longitude': longitude,
+        'phone': phone,
+        'isActive': isActive,
+      });
 
       _isLoading = false;
       notifyListeners();
@@ -86,7 +149,7 @@ class AdminProvider extends ChangeNotifier {
   }
 
   Future<bool> addAmbulance({
-    required String hospitalId,
+    String hospitalId = '',
     required String plateNumber,
     required String driverName,
     required String driverPhone,
@@ -98,6 +161,14 @@ class AdminProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final exists = await checkEmailExists(driverEmail);
+      if (exists) {
+        _errorMessage = 'البريد الإلكتروني مستخدم بالفعل في حساب آخر';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
       final ambulanceData = AmbulanceModel(
         hospitalId: hospitalId,
         plateNumber: plateNumber,
@@ -107,7 +178,8 @@ class AdminProvider extends ChangeNotifier {
         driverPassword: driverPassword,
       );
 
-      await _firestore.collection('ambulances').add(ambulanceData.toMap());
+      final ref = await _firestore.collection('ambulances').add(ambulanceData.toMap());
+      final ambulanceId = ref.id;
 
       await _authService.signUp(
         name: driverName,
@@ -129,8 +201,86 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteHospital(String hospitalId) async {
-    await _firestore.collection('hospitals').doc(hospitalId).update({'isActive': false});
+  Future<bool> updateAmbulance({
+    required String ambulanceId,
+    String hospitalId = '',
+    required String plateNumber,
+    required String driverName,
+    required String driverPhone,
+    required String status,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _firestore.collection('ambulances').doc(ambulanceId).update({
+        'hospitalId': hospitalId,
+        'plateNumber': plateNumber,
+        'driverName': driverName,
+        'driverPhone': driverPhone,
+        'status': status,
+      });
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> addAdmin({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final exists = await checkEmailExists(email);
+      if (exists) {
+        _errorMessage = 'البريد الإلكتروني مستخدم بالفعل في حساب آخر';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      await credential.user!.updateDisplayName(name);
+
+      await _firestore.collection('users').doc(credential.user!.uid).set({
+        'id': credential.user!.uid,
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'role': 'admin',
+        'isActive': true,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> toggleHospitalActive(String hospitalId, bool isActive) async {
+    await _firestore.collection('hospitals').doc(hospitalId).update({'isActive': isActive});
   }
 
   Future<void> deleteAmbulance(String ambulanceId) async {

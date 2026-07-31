@@ -5,6 +5,9 @@ enum BookingStatus {
   accepted,
   rejected,
   inProgress,
+  headingToPatient,
+  pickedUp,
+  arrived,
   completed,
   cancelled,
 }
@@ -16,6 +19,8 @@ class BookingModel {
   final String userPhone;
   final double? userLat;
   final double? userLng;
+  final double? destinationLat;
+  final double? destinationLng;
   final BookingType bookingType;
   final BookingStatus status;
   final String? departmentId;
@@ -44,6 +49,8 @@ class BookingModel {
     required this.userPhone,
     this.userLat,
     this.userLng,
+    this.destinationLat,
+    this.destinationLng,
     required this.bookingType,
     this.status = BookingStatus.pending,
     this.departmentId,
@@ -75,6 +82,8 @@ class BookingModel {
       'userPhone': userPhone,
       'userLat': userLat,
       'userLng': userLng,
+      'destinationLat': destinationLat,
+      'destinationLng': destinationLng,
       'bookingType': bookingType.name,
       'status': status.name,
       'departmentId': departmentId,
@@ -106,6 +115,8 @@ class BookingModel {
       userPhone: map['userPhone'] ?? '',
       userLat: (map['userLat'] ?? 0).toDouble(),
       userLng: (map['userLng'] ?? 0).toDouble(),
+      destinationLat: (map['destinationLat'] ?? 0).toDouble(),
+      destinationLng: (map['destinationLng'] ?? 0).toDouble(),
       bookingType: _parseBookingType(map['bookingType']),
       status: _parseBookingStatus(map['status']),
       departmentId: map['departmentId'],
@@ -146,6 +157,12 @@ class BookingModel {
         return BookingStatus.rejected;
       case 'inProgress':
         return BookingStatus.inProgress;
+      case 'heading_to_patient':
+        return BookingStatus.headingToPatient;
+      case 'picked_up':
+        return BookingStatus.pickedUp;
+      case 'arrived':
+        return BookingStatus.arrived;
       case 'completed':
         return BookingStatus.completed;
       case 'cancelled':
@@ -165,6 +182,12 @@ class BookingModel {
         return 'Rejected';
       case BookingStatus.inProgress:
         return 'In Progress';
+      case BookingStatus.headingToPatient:
+        return 'Heading to Patient';
+      case BookingStatus.pickedUp:
+        return 'Picked Up';
+      case BookingStatus.arrived:
+        return 'Arrived';
       case BookingStatus.completed:
         return 'Completed';
       case BookingStatus.cancelled:
@@ -182,6 +205,12 @@ class BookingModel {
         return 'مرفوض';
       case BookingStatus.inProgress:
         return 'قيد التنفيذ';
+      case BookingStatus.headingToPatient:
+        return 'في الطريق للمريض';
+      case BookingStatus.pickedUp:
+        return 'تم الاستلام';
+      case BookingStatus.arrived:
+        return 'وصل';
       case BookingStatus.completed:
         return 'مكتمل';
       case BookingStatus.cancelled:

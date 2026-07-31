@@ -40,7 +40,22 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (result == 0) {
-      Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+      final role = auth.userModel?.role;
+      String route;
+      switch (role) {
+        case 'admin':
+          route = AppRoutes.adminDashboard;
+          break;
+        case 'hospital':
+          route = AppRoutes.hospitalDashboard;
+          break;
+        case 'driver':
+          route = AppRoutes.driverDashboard;
+          break;
+        default:
+          route = AppRoutes.home;
+      }
+      Navigator.of(context).pushReplacementNamed(route);
     } else if (result == 1) {
       Navigator.of(context).pushReplacementNamed(AppRoutes.emailVerification);
     }
@@ -63,14 +78,20 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const SizedBox(height: 40),
                 Center(
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(20),
+                  child: Image.asset(
+                    'assets/images/logo.jpg',
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Icon(Icons.medical_services, size: 40, color: Colors.white),
                     ),
-                    child: const Icon(Icons.medical_services, size: 40, color: Colors.white),
                   ),
                 ),
                 const SizedBox(height: 32),
