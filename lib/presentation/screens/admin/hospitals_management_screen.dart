@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../providers/admin_provider.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../widgets/common/location_picker.dart';
 
 class HospitalsManagementScreen extends StatelessWidget {
   const HospitalsManagementScreen({super.key});
@@ -146,7 +147,6 @@ class _EditHospitalScreenState extends State<_EditHospitalScreen> {
   late TextEditingController _phoneCtrl;
   late bool _isActive;
   LatLng? _selectedLocation;
-  GoogleMapController? _mapController;
 
   @override
   void initState() {
@@ -170,7 +170,6 @@ class _EditHospitalScreenState extends State<_EditHospitalScreen> {
     _addressCtrl.dispose();
     _cityCtrl.dispose();
     _phoneCtrl.dispose();
-    _mapController?.dispose();
     super.dispose();
   }
 
@@ -212,40 +211,10 @@ class _EditHospitalScreenState extends State<_EditHospitalScreen> {
                 onChanged: (v) => setState(() => _isActive = v),
               ),
               const SizedBox(height: 12),
-              Text('اختر موقع المستشفى على الخريطة', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  height: 200,
-                  child: GoogleMap(
-                    initialCameraPosition: CameraPosition(
-                      target: _selectedLocation ?? const LatLng(24.7136, 46.6753),
-                      zoom: 12,
-                    ),
-                    onMapCreated: (ctrl) => _mapController = ctrl,
-                    onTap: (pos) => setState(() => _selectedLocation = pos),
-                    markers: _selectedLocation != null
-                        ? {
-                            Marker(
-                              markerId: const MarkerId('hospital'),
-                              position: _selectedLocation!,
-                            ),
-                          }
-                        : {},
-                    myLocationButtonEnabled: false,
-                    mapToolbarEnabled: false,
-                  ),
-                ),
+              LocationPicker(
+                initialLocation: _selectedLocation,
+                onChanged: (pos) => setState(() => _selectedLocation = pos),
               ),
-              if (_selectedLocation != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    '${_selectedLocation!.latitude.toStringAsFixed(4)}, ${_selectedLocation!.longitude.toStringAsFixed(4)}',
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                ),
               const SizedBox(height: 20),
               if (admin.errorMessage != null)
                 Padding(

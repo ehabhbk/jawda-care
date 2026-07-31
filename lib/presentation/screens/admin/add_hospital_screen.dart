@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../providers/admin_provider.dart';
+import '../../widgets/common/location_picker.dart';
 
 class AddHospitalScreen extends StatefulWidget {
   const AddHospitalScreen({super.key});
@@ -20,9 +21,6 @@ class _AddHospitalScreenState extends State<AddHospitalScreen> {
   final _passwordCtrl = TextEditingController();
 
   LatLng? _selectedLocation;
-  GoogleMapController? _mapController;
-
-  static const LatLng _defaultLocation = LatLng(24.7136, 46.6753);
 
   @override
   void dispose() {
@@ -32,12 +30,7 @@ class _AddHospitalScreenState extends State<AddHospitalScreen> {
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
-    _mapController?.dispose();
     super.dispose();
-  }
-
-  void _onMapTapped(LatLng pos) {
-    setState(() => _selectedLocation = pos);
   }
 
   @override
@@ -89,41 +82,9 @@ class _AddHospitalScreenState extends State<AddHospitalScreen> {
                 validator: (v) => v != null && v.length < 6 ? '6 أحرف على الأقل' : null,
               ),
               const SizedBox(height: 20),
-              Text('اختر موقع المستشفى على الخريطة', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  height: 250,
-                  child: GoogleMap(
-                    initialCameraPosition: const CameraPosition(
-                      target: _defaultLocation,
-                      zoom: 10,
-                    ),
-                    onMapCreated: (ctrl) => _mapController = ctrl,
-                    onTap: _onMapTapped,
-                    markers: _selectedLocation != null
-                        ? {
-                            Marker(
-                              markerId: const MarkerId('hospital'),
-                              position: _selectedLocation!,
-                              infoWindow: const InfoWindow(title: 'موقع المستشفى'),
-                            ),
-                          }
-                        : {},
-                    myLocationButtonEnabled: false,
-                    mapToolbarEnabled: false,
-                  ),
-                ),
+              LocationPicker(
+                onChanged: (pos) => _selectedLocation = pos,
               ),
-              if (_selectedLocation != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'الإحداثيات: ${_selectedLocation!.latitude.toStringAsFixed(4)}, ${_selectedLocation!.longitude.toStringAsFixed(4)}',
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                ),
               const SizedBox(height: 20),
               if (admin.errorMessage != null)
                 Padding(
