@@ -87,6 +87,7 @@ class _JawdaCareAppState extends State<JawdaCareApp>
         AppLocalization.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
       ],
       localeResolutionCallback: (locale, supportedLocales) {
         for (final supported in supportedLocales) {

@@ -33,6 +33,7 @@ dependencies:
   intl_phone_number_input: ^0.7.5
   shared_preferences: ^2.3.5
   file_selector: ^1.1.0
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:

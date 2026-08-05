@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../data/models/booking_model.dart';
+import '../../../data/services/geocoding_service.dart';
 import '../../../data/services/location_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/booking_provider.dart';
@@ -31,11 +33,191 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
   String? _linkedHospitalName;
   String? _linkedHospitalNameAr;
 
+  final _patientSearchController = TextEditingController();
+  final _destinationSearchController = TextEditingController();
+  Timer? _patientSearchDebounce;
+  Timer? _destinationSearchDebounce;
+  List<PlaceResult> _patientSuggestions = [];
+  List<PlaceResult> _destinationSuggestions = [];
+  bool _searchingPatient = false;
+  bool _searchingDestination = false;
+  final _patientFocus = FocusNode();
+  final _destinationFocus = FocusNode();
+
   @override
   void initState() {
     super.initState();
-    _readArguments();
-    _getCurrentLocation();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _readArguments();
+      _getCurrentLocation();
+    });
+  }
+
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    _patientSearchController.dispose();
+    _destinationSearchController.dispose();
+    _patientSearchDebounce?.cancel();
+    _destinationSearchDebounce?.cancel();
+    _patientFocus.dispose();
+    _destinationFocus.dispose();
+    super.dispose();
+  }
+
+  void _onPatientSearchChanged(String value) {
+    _patientSearchDebounce?.cancel();
+    final query = value.trim();
+    if (query.length < 3) {
+      setState(() {
+        _patientSuggestions = [];
+        _searchingPatient = false;
+      });
+      return;
+    }
+    setState(() => _searchingPatient = true);
+    _patientSearchDebounce = Timer(const Duration(milliseconds: 600), () async {
+      final results = await GeocodingService.search(query);
+      if (!mounted || _patientSearchController.text.trim() != query) return;
+      setState(() {
+        _patientSuggestions = results;
+        _searchingPatient = false;
+      });
+    });
+  }
+
+  void _onDestinationSearchChanged(String value) {
+    _destinationSearchDebounce?.cancel();
+    final query = value.trim();
+    if (query.length < 3) {
+      setState(() {
+        _destinationSuggestions = [];
+        _searchingDestination = false;
+      });
+      return;
+    }
+    setState(() => _searchingDestination = true);
+    _destinationSearchDebounce = Timer(
+      const Duration(milliseconds: 600),
+      () async {
+        final results = await GeocodingService.search(query);
+        if (!mounted || _destinationSearchController.text.trim() != query) {
+          return;
+        }
+        setState(() {
+          _destinationSuggestions = results;
+          _searchingDestination = false;
+        });
+      },
+    );
+  }
+
+  void _selectPatientPlace(PlaceResult place) {
+    _patientSearchController.text = place.name;
+    _patientFocus.unfocus();
+    setState(() {
+      _patientSuggestions = [];
+      _patientLocation = LatLng(place.latitude, place.longitude);
+      _destinationLocation = null;
+      _nearbyAmbulances.clear();
+    });
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(_patientLocation!, 15),
+    );
+    _loadNearbyAmbulances();
+  }
+
+  void _selectDestinationPlace(PlaceResult place) {
+    _destinationSearchController.text = place.name;
+    _destinationFocus.unfocus();
+    setState(() {
+      _destinationSuggestions = [];
+      _destinationLocation = LatLng(place.latitude, place.longitude);
+    });
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(_destinationLocation!, 15),
+    );
+  }
+
+  Widget _buildSearchField({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String hint,
+    required String label,
+    required bool searching,
+    required List<PlaceResult> suggestions,
+    required ValueChanged<String> onChanged,
+    required ValueChanged<PlaceResult> onSelect,
+  }) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        TextField(
+          controller: controller,
+          focusNode: focusNode,
+          textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            hintText: hint,
+            isDense: true,
+            prefixIcon: const Icon(Icons.search, size: 20),
+            suffixIcon: searching
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: Padding(
+                      padding: EdgeInsets.all(12),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : controller.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, size: 18),
+                    onPressed: () {
+                      controller.clear();
+                      onChanged('');
+                    },
+                  )
+                : null,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+          ),
+        ),
+        if (suggestions.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            constraints: const BoxConstraints(maxHeight: 160),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              itemCount: suggestions.length,
+              itemBuilder: (ctx, i) {
+                final place = suggestions[i];
+                return ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.place, size: 18),
+                  title: Text(
+                    place.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  onTap: () => onSelect(place),
+                );
+              },
+            ),
+          ),
+      ],
+    );
   }
 
   void _readArguments() {
@@ -138,16 +320,24 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
     return c * (2 * asin(sqrt(a)));
   }
 
-  @override
-  void dispose() {
-    _mapController?.dispose();
-    super.dispose();
-  }
-
   Future<void> _submit() async {
     if (_patientLocation == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('يرجى تحديد موقعك على الخريطة')),
+      );
+      return;
+    }
+
+    if (_destinationLocation == null) {
+      final isAr = Localizations.localeOf(context).languageCode == 'ar';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isAr
+                ? 'يرجى تحديد الوجهة على الخريطة'
+                : 'Please set the destination on the map',
+          ),
+        ),
       );
       return;
     }
@@ -280,24 +470,54 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          _buildSearchField(
+                            controller: _patientSearchController,
+                            focusNode: _patientFocus,
+                            label: isAr
+                                ? '📍 موقع المريض'
+                                : '📍 Patient location',
+                            hint: isAr
+                                ? 'اكتب اسم المكان أو العنوان'
+                                : 'Type a place name or address',
+                            searching: _searchingPatient,
+                            suggestions: _patientSuggestions,
+                            onChanged: _onPatientSearchChanged,
+                            onSelect: _selectPatientPlace,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildSearchField(
+                            controller: _destinationSearchController,
+                            focusNode: _destinationFocus,
+                            label: isAr ? '🏥 الوجهة' : '🏥 Destination',
+                            hint: isAr
+                                ? 'اكتب اسم الوجهة أو المستشفى'
+                                : 'Type destination name or hospital',
+                            searching: _searchingDestination,
+                            suggestions: _destinationSuggestions,
+                            onChanged: _onDestinationSearchChanged,
+                            onSelect: _selectDestinationPlace,
+                          ),
+                          const SizedBox(height: 8),
                           Text(
                             isAr
-                                ? '📍 اضغط على الخريطة لتحديد:'
-                                : '📍 Tap map to set:',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                                ? 'اضغط على الخريطة أيضاً لتحديد الموقع والوجهة'
+                                : 'You can also tap the map to set location & destination',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
                           ),
-                          const SizedBox(height: 4),
                           if (_patientLocation == null) ...[
+                            const SizedBox(height: 4),
                             Text(
                               isAr
-                                  ? 'تعذر تحديد موقعك تلقائياً. اضغط على الخريطة لتحديد موقعك ثم الوجهة.'
-                                  : 'Could not get your location automatically. Tap the map to set your location, then the destination.',
+                                  ? 'تعذر تحديد موقعك تلقائياً. اضغط على الخريطة أو ابحث بالاسم.'
+                                  : 'Could not get your location automatically. Tap the map or search by name.',
                               style: const TextStyle(
                                 color: AppColors.error,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(height: 4),
                           ],
                           Text(
                             '${isAr ? "موقعك" : "Your location"} ${_patientLocation != null ? "✓" : "..."}',

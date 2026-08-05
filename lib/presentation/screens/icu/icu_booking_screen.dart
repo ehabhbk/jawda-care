@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -42,7 +42,9 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _load();
+    });
   }
 
   Future<void> _load() async {
@@ -138,7 +140,11 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
       imageQuality: 85,
     );
     if (file == null) return;
-    await _uploadReport(File(file.path), file.name);
+    await _uploadReport(
+      await file.readAsBytes(),
+      file.name,
+      contentType: 'image/jpeg',
+    );
   }
 
   Future<void> _pickGalleryImage() async {
@@ -148,7 +154,11 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
       imageQuality: 85,
     );
     if (file == null) return;
-    await _uploadReport(File(file.path), file.name);
+    await _uploadReport(
+      await file.readAsBytes(),
+      file.name,
+      contentType: 'image/jpeg',
+    );
   }
 
   Future<void> _pickPdf() async {
@@ -159,18 +169,27 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
     );
     final file = await openFile(acceptedTypeGroups: [typeGroup]);
     if (file == null) return;
-    await _uploadReport(File(file.path), file.name);
+    await _uploadReport(
+      await file.readAsBytes(),
+      file.name,
+      contentType: 'application/pdf',
+    );
   }
 
-  Future<void> _uploadReport(File file, String fileName) async {
+  Future<void> _uploadReport(
+    Uint8List bytes,
+    String fileName, {
+    required String contentType,
+  }) async {
     setState(() {
       _uploadingReport = true;
       _reportError = null;
     });
     try {
       final url = await _reportService.uploadReport(
-        file: file,
+        bytes: bytes,
         fileName: '${DateTime.now().millisecondsSinceEpoch}_$fileName',
+        contentType: contentType,
       );
       if (!mounted) return;
       setState(() {

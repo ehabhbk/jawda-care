@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../data/services/directions_service.dart';
 import '../../../data/services/location_service.dart';
 
 class DriverTripScreen extends StatefulWidget {
@@ -31,12 +32,39 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
   double _driverLat = 0;
   double _driverLng = 0;
   Timer? _gpsTimer;
+  final _directionsService = DirectionsService();
+  List<LatLng> _routeToPatient = [];
+  List<LatLng> _routeToDest = [];
 
   @override
   void initState() {
     super.initState();
     _loadBooking();
-    _startGpsUpdates();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startGpsUpdates();
+    });
+  }
+
+  Future<void> _loadRoutes() async {
+    if (_patientLat == null) return;
+    if (_routeToPatient.isEmpty && _driverLat != 0) {
+      final route = await _directionsService.getRoute(
+        origin: LatLng(_driverLat, _driverLng),
+        destination: LatLng(_patientLat!, _patientLng!),
+      );
+      if (mounted && route.isNotEmpty) {
+        setState(() => _routeToPatient = route);
+      }
+    }
+    if (_routeToDest.isEmpty && _destLat != null && _destLat != 0) {
+      final route = await _directionsService.getRoute(
+        origin: LatLng(_patientLat!, _patientLng!),
+        destination: LatLng(_destLat!, _destLng!),
+      );
+      if (mounted && route.isNotEmpty) {
+        setState(() => _routeToDest = route);
+      }
+    }
   }
 
   @override
@@ -60,6 +88,7 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
       _destLat = (data['destinationLat'] ?? 0).toDouble();
       _destLng = (data['destinationLng'] ?? 0).toDouble();
     });
+    _loadRoutes();
   }
 
   Future<void> _startGpsUpdates() async {
@@ -81,6 +110,7 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
             .collection('ambulances')
             .doc(widget.ambulanceId)
             .update({'currentLat': _driverLat, 'currentLng': _driverLng});
+        _loadRoutes();
       } catch (_) {}
     });
   }
@@ -187,19 +217,31 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                     onMapCreated: (ctrl) => _mapController = ctrl,
                     markers: _buildMarkers(),
                     polylines: {
-                      if (_patientLat != null &&
-                          _destLat != null &&
-                          _destLat != 0)
+                      if (_routeToPatient.isNotEmpty)
+                        Polyline(
+                          polylineId: const PolylineId('route_to_patient'),
+                          points: _routeToPatient,
+                          color: Colors.blue,
+                          width: 5,
+                        )
+                      else if (_patientLat != null && _driverLat != 0)
                         Polyline(
                           polylineId: const PolylineId('route_to_patient'),
                           points: [
-                            if (_driverLat != 0) LatLng(_driverLat, _driverLng),
+                            LatLng(_driverLat, _driverLng),
                             LatLng(_patientLat!, _patientLng!),
                           ],
                           color: Colors.blue,
                           width: 4,
                         ),
-                      if (_destLat != null && _destLat != 0)
+                      if (_routeToDest.isNotEmpty)
+                        Polyline(
+                          polylineId: const PolylineId('route_to_dest'),
+                          points: _routeToDest,
+                          color: Colors.teal,
+                          width: 5,
+                        )
+                      else if (_destLat != null && _destLat != 0)
                         Polyline(
                           polylineId: const PolylineId('route_to_dest'),
                           points: [

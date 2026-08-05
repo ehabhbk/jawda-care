@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../data/services/directions_service.dart';
 
 class AmbulanceTrackingScreen extends StatefulWidget {
   final String bookingId;
@@ -15,6 +16,33 @@ class AmbulanceTrackingScreen extends StatefulWidget {
 }
 
 class _AmbulanceTrackingScreenState extends State<AmbulanceTrackingScreen> {
+  final _directionsService = DirectionsService();
+  List<LatLng> _routeToPatient = [];
+  String _routeKey = '';
+
+  Future<void> _loadRouteToPatient({
+    required double driverLat,
+    required double driverLng,
+    required double patientLat,
+    required double patientLng,
+  }) async {
+    if (driverLat == 0 || patientLat == 0) return;
+    final key =
+        '${driverLat.toStringAsFixed(3)},${driverLng.toStringAsFixed(3)}'
+        '|${patientLat.toStringAsFixed(3)},${patientLng.toStringAsFixed(3)}';
+    if (key == _routeKey) return;
+
+    final route = await _directionsService.getRoute(
+      origin: LatLng(driverLat, driverLng),
+      destination: LatLng(patientLat, patientLng),
+    );
+    if (!mounted || route.isEmpty) return;
+    setState(() {
+      _routeToPatient = route;
+      _routeKey = key;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
@@ -136,6 +164,15 @@ class _AmbulanceTrackingScreenState extends State<AmbulanceTrackingScreen> {
                   ? (distance / 40 * 60).round()
                   : null;
 
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _loadRouteToPatient(
+                  driverLat: driverLat,
+                  driverLng: driverLng,
+                  patientLat: patientLat,
+                  patientLng: patientLng,
+                );
+              });
+
               final markers = <Marker>{
                 if (patientLat != 0)
                   Marker(
@@ -181,7 +218,14 @@ class _AmbulanceTrackingScreenState extends State<AmbulanceTrackingScreen> {
                       ),
                       markers: markers,
                       polylines: {
-                        if (driverLat != 0 && patientLat != 0)
+                        if (_routeToPatient.isNotEmpty)
+                          Polyline(
+                            polylineId: const PolylineId('route'),
+                            points: _routeToPatient,
+                            color: Colors.blue,
+                            width: 5,
+                          )
+                        else if (driverLat != 0 && patientLat != 0)
                           Polyline(
                             polylineId: const PolylineId('route'),
                             points: [
