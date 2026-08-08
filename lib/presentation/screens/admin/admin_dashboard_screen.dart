@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../widgets/common/theme_toggle_button.dart';
@@ -36,6 +37,109 @@ class AdminDashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .snapshots(),
+              builder: (ctx, snap) {
+                if (!snap.hasData) {
+                  return const SizedBox(
+                    height: 120,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                final users = snap.data!.docs;
+                final patients = users
+                    .where((d) => (d.data() as Map)['role'] == 'patient')
+                    .length;
+                final admins = users
+                    .where((d) => (d.data() as Map)['role'] == 'admin')
+                    .length;
+                final hospitals = users
+                    .where((d) => (d.data() as Map)['role'] == 'hospital')
+                    .length;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'إحصائيات النظام',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.person,
+                            label: 'المستخدمون',
+                            value: '$patients',
+                            color: Colors.teal,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.admin_panel_settings,
+                            label: 'المشرفون',
+                            value: '$admins',
+                            color: Colors.blue,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.local_hospital,
+                            label: 'المستشفيات',
+                            value: '$hospitals',
+                            color: Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('ambulances')
+                          .snapshots(),
+                      builder: (ctx2, ambulancesSnap) {
+                        final ambulances =
+                            ambulancesSnap.hasData
+                                ? ambulancesSnap.data!.docs.length
+                                : 0;
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.airport_shuttle,
+                                label: 'سيارات الإسعاف',
+                                value: '$ambulances',
+                                color: Colors.blueGrey,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.group,
+                                label: 'إجمالي المستخدمين',
+                                value: '${users.length}',
+                                color: Colors.green,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(child: Container()),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                );
+              },
+            ),
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('bookings')
@@ -296,7 +400,7 @@ class _StatCard extends StatelessWidget {
             ),
             Text(
               label,
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],

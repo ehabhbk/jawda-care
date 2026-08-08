@@ -194,7 +194,7 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey.shade300),
+              border: Border.all(color: AppColors.border),
             ),
             child: ListView.builder(
               shrinkWrap: true,
@@ -502,8 +502,8 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
                             isAr
                                 ? 'اضغط على الخريطة أيضاً لتحديد الموقع والوجهة'
                                 : 'You can also tap the map to set location & destination',
-                            style: const TextStyle(
-                              color: Colors.grey,
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
                               fontSize: 12,
                             ),
                           ),
@@ -597,7 +597,7 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
                         isAr
                             ? 'سيتم إرسال طلبك لأقرب سائق متاح وسيتوجب عليه القبول'
                             : 'Your request will be sent to the nearest available driver for acceptance',
-                        style: const TextStyle(color: Colors.grey),
+                        style: TextStyle(color: AppColors.textSecondary),
                       ),
                     ),
                   SizedBox(

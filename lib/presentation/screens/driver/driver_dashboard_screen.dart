@@ -553,16 +553,16 @@ class _PendingRequestsSectionState extends State<_PendingRequestsSection> {
                         if (destName != null)
                           Text(
                             '${isAr ? "الوجهة" : "Destination"}: $destName',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
-                              color: Colors.grey,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         Text(
                           '${isAr ? "المسافة" : "Distance"}: ${distance < 1 ? "${(distance * 1000).round()} م" : "${distance.toStringAsFixed(1)} كم"}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
-                            color: Colors.grey,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -635,7 +635,7 @@ class _StatCard extends StatelessWidget {
             ),
             Text(
               label,
-              style: const TextStyle(fontSize: 10, color: Colors.grey),
+              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],

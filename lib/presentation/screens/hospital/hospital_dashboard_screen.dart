@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../widgets/common/theme_toggle_button.dart';
@@ -269,7 +270,7 @@ class _StatCard extends StatelessWidget {
             ),
             Text(
               label,
-              style: const TextStyle(fontSize: 10, color: Colors.grey),
+              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],

@@ -290,7 +290,9 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                                 ),
                                 Text(
                                   _bookingData?['userPhone'] ?? '',
-                                  style: const TextStyle(color: Colors.grey),
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                  ),
                                 ),
                               ],
                             ),

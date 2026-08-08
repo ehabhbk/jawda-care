@@ -132,8 +132,8 @@ class _AmbulanceTrackingScreenState extends State<AmbulanceTrackingScreen> {
                             ? 'سيصلك إشعار فور قبول السائق. سيتم تحويل الطلب تلقائياً لأقرب سائق آخر إذا رفض أي سائق.'
                             : 'You will be notified once a driver accepts. The request is automatically offered to the next nearest driver if one declines.',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.grey,
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
                           fontSize: 12,
                         ),
                       ),
@@ -292,8 +292,8 @@ class _AmbulanceTrackingScreenState extends State<AmbulanceTrackingScreen> {
                                   if (driverPhone != '...')
                                     Text(
                                       driverPhone,
-                                      style: const TextStyle(
-                                        color: Colors.grey,
+                                      style: TextStyle(
+                                        color: AppColors.textSecondary,
                                         fontSize: 12,
                                       ),
                                     ),
@@ -402,7 +402,10 @@ class _InfoChip extends StatelessWidget {
             color: AppColors.ambulanceRed,
           ),
         ),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
       ],
     );
   }

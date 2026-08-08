@@ -617,7 +617,9 @@ class _IcuBookingScreenState extends State<IcuBookingScreen> {
                             ? ListTile(
                                 title: Text(
                                   b['nameAr'] ?? b['name'],
-                                  style: const TextStyle(color: Colors.grey),
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                  ),
                                 ),
                                 subtitle: Row(
                                   children: [
@@ -852,7 +854,7 @@ class _OtherPatientFormDialogState extends State<_OtherPatientFormDialog> {
               isAr
                   ? 'رقم الهاتف يجب أن يكون 6 أرقام على الأقل'
                   : 'Phone number must be at least 6 digits',
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
             ),
           ),
         ],

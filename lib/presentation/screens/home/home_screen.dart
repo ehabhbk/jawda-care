@@ -9,6 +9,7 @@ import '../../../data/services/hospital_service.dart';
 import '../../../data/services/location_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/language_provider.dart';
+import '../../widgets/common/hospital_logo.dart';
 import '../../widgets/common/theme_toggle_button.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -171,10 +172,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(
-                                      Icons.local_hospital,
-                                      color: Colors.teal,
-                                      size: 40,
+                                    HospitalLogo(
+                                      imageUrl: h.imageUrl,
+                                      radius: 30,
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
@@ -189,6 +189,76 @@ class _HomeScreenState extends State<HomeScreen> {
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
+                                          if (h.addressAr.isNotEmpty ||
+                                              h.address.isNotEmpty) ...[
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.location_on_outlined,
+                                                  size: 15,
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    isAr
+                                                        ? (h
+                                                                  .addressAr
+                                                                  .isNotEmpty
+                                                              ? h.addressAr
+                                                              : h.address)
+                                                        : h.address,
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: AppColors
+                                                          .textSecondary,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                          if (h.cityAr.isNotEmpty ||
+                                              h.city.isNotEmpty) ...[
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              isAr
+                                                  ? (h.cityAr.isNotEmpty
+                                                        ? h.cityAr
+                                                        : h.city)
+                                                  : h.city,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                          if (h.phone.isNotEmpty) ...[
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.phone,
+                                                  size: 15,
+                                                  color: Colors.teal,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  h.phone,
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    color: Colors.teal,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
                                           const SizedBox(height: 6),
                                           ...(() {
                                             final depts =

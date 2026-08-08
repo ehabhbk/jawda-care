@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../providers/admin_provider.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../widgets/common/hospital_logo.dart';
 import '../../widgets/common/location_picker.dart';
 
 class HospitalsManagementScreen extends StatelessWidget {
@@ -21,9 +24,11 @@ class HospitalsManagementScreen extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: admin.hospitalsStream,
         builder: (ctx, snap) {
-          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+          if (!snap.hasData)
+            return const Center(child: CircularProgressIndicator());
           final hospitals = snap.data!.docs;
-          if (hospitals.isEmpty) return const Center(child: Text('لا توجد مستشفيات'));
+          if (hospitals.isEmpty)
+            return const Center(child: Text('لا توجد مستشفيات'));
           return ListView.builder(
             padding: const EdgeInsets.all(8),
             itemCount: hospitals.length,
@@ -35,15 +40,24 @@ class HospitalsManagementScreen extends StatelessWidget {
               return Card(
                 color: isActive == true ? null : Colors.grey[200],
                 child: ListTile(
-                  leading: Icon(Icons.local_hospital, color: isActive == true ? Colors.teal : Colors.grey),
-                  title: Text(data['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  leading: Icon(
+                    Icons.local_hospital,
+                    color: isActive == true ? Colors.teal : Colors.grey,
+                  ),
+                  title: Text(
+                    data['name'] ?? '',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('${data['city'] ?? ''} | ${data['phone'] ?? ''}'),
                       const SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: isActive == true
                               ? Colors.green.withValues(alpha: 0.15)
@@ -65,12 +79,17 @@ class HospitalsManagementScreen extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        tooltip: isActive == true ? 'إيقاف (لن تظهر للمرضى)' : 'تفعيل',
+                        tooltip: isActive == true
+                            ? 'إيقاف (لن تظهر للمرضى)'
+                            : 'تفعيل',
                         icon: Icon(
                           isActive == true ? Icons.block : Icons.check_circle,
-                          color: isActive == true ? Colors.orange : Colors.green,
+                          color: isActive == true
+                              ? Colors.orange
+                              : Colors.green,
                         ),
-                        onPressed: () => admin.toggleHospitalActive(id, isActive != true),
+                        onPressed: () =>
+                            admin.toggleHospitalActive(id, isActive != true),
                       ),
                       IconButton(
                         icon: const Icon(Icons.edit, color: Colors.blue),
@@ -79,7 +98,12 @@ class HospitalsManagementScreen extends StatelessWidget {
                       IconButton(
                         tooltip: 'حذف',
                         icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _confirmDelete(context, admin, id, data['name'] ?? ''),
+                        onPressed: () => _confirmDelete(
+                          context,
+                          admin,
+                          id,
+                          data['name'] ?? '',
+                        ),
                       ),
                     ],
                   ),
@@ -92,15 +116,25 @@ class HospitalsManagementScreen extends StatelessWidget {
     );
   }
 
-  void _editHospital(BuildContext context, String id, Map<String, dynamic> data) {
+  void _editHospital(
+    BuildContext context,
+    String id,
+    Map<String, dynamic> data,
+  ) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => _EditHospitalScreen(hospitalId: id, hospitalData: data)),
+      MaterialPageRoute(
+        builder: (_) => _EditHospitalScreen(hospitalId: id, hospitalData: data),
+      ),
     );
   }
 
   Future<void> _confirmDelete(
-      BuildContext context, AdminProvider admin, String id, String name) async {
+    BuildContext context,
+    AdminProvider admin,
+    String id,
+    String name,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -109,7 +143,10 @@ class HospitalsManagementScreen extends StatelessWidget {
           'هل أنت متأكد من حذف "$name"؟\nسيتم حذف كل الأسرة والأقسام وسيارات الإسعاف التابعة لها.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
@@ -122,9 +159,9 @@ class HospitalsManagementScreen extends StatelessWidget {
     if (confirmed == true) {
       final success = await admin.deleteHospital(id);
       if (success && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم حذف المستشفى')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('تم حذف المستشفى')));
       }
     }
   }
@@ -134,7 +171,10 @@ class _EditHospitalScreen extends StatefulWidget {
   final String hospitalId;
   final Map<String, dynamic> hospitalData;
 
-  const _EditHospitalScreen({required this.hospitalId, required this.hospitalData});
+  const _EditHospitalScreen({
+    required this.hospitalId,
+    required this.hospitalData,
+  });
 
   @override
   State<_EditHospitalScreen> createState() => _EditHospitalScreenState();
@@ -147,6 +187,8 @@ class _EditHospitalScreenState extends State<_EditHospitalScreen> {
   late TextEditingController _phoneCtrl;
   late bool _isActive;
   LatLng? _selectedLocation;
+  String? _imageUrl;
+  bool _pickingImage = false;
 
   @override
   void initState() {
@@ -156,6 +198,7 @@ class _EditHospitalScreenState extends State<_EditHospitalScreen> {
     _addressCtrl = TextEditingController(text: d['address'] ?? '');
     _cityCtrl = TextEditingController(text: d['city'] ?? '');
     _phoneCtrl = TextEditingController(text: d['phone'] ?? '');
+    _imageUrl = d['imageUrl'];
     _isActive = d['isActive'] ?? true;
     final lat = (d['latitude'] ?? 0).toDouble();
     final lng = (d['longitude'] ?? 0).toDouble();
@@ -173,6 +216,37 @@ class _EditHospitalScreenState extends State<_EditHospitalScreen> {
     super.dispose();
   }
 
+  Future<void> _pickLogo() async {
+    setState(() => _pickingImage = true);
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      final base64 = base64Encode(bytes);
+      if (base64.length > 900000) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('حجم الصورة كبير جداً، اختر صورة أصغر')),
+        );
+        return;
+      }
+      setState(() => _imageUrl = 'data:image/jpeg;base64,$base64');
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('فشل اختيار الصورة')));
+      }
+    } finally {
+      if (mounted) setState(() => _pickingImage = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final admin = context.watch<AdminProvider>();
@@ -184,6 +258,28 @@ class _EditHospitalScreenState extends State<_EditHospitalScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Center(
+                child: Column(
+                  children: [
+                    HospitalLogo(imageUrl: _imageUrl, radius: 45),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: _pickingImage ? null : _pickLogo,
+                      icon: _pickingImage
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.image_outlined),
+                      label: Text(
+                        _imageUrl != null ? 'تغيير اللوجو' : 'إضافة لوجو',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _nameCtrl,
                 decoration: const InputDecoration(labelText: 'اسم المستشفى'),
@@ -219,7 +315,10 @@ class _EditHospitalScreenState extends State<_EditHospitalScreen> {
               if (admin.errorMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(admin.errorMessage!, style: const TextStyle(color: Colors.red)),
+                  child: Text(
+                    admin.errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
                 ),
               SizedBox(
                 width: double.infinity,
@@ -227,7 +326,10 @@ class _EditHospitalScreenState extends State<_EditHospitalScreen> {
                   onPressed: admin.isLoading ? null : _save,
                   child: admin.isLoading
                       ? const CircularProgressIndicator()
-                      : const Text('حفظ التعديلات', style: TextStyle(fontSize: 16)),
+                      : const Text(
+                          'حفظ التعديلات',
+                          style: TextStyle(fontSize: 16),
+                        ),
                 ),
               ),
             ],
@@ -252,12 +354,13 @@ class _EditHospitalScreenState extends State<_EditHospitalScreen> {
       longitude: _selectedLocation?.longitude ?? 0,
       phone: _phoneCtrl.text,
       isActive: _isActive,
+      imageUrl: _imageUrl,
     );
     if (success && mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ التعديلات')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم حفظ التعديلات')));
     }
   }
 }

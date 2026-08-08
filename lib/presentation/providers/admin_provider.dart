@@ -15,15 +15,21 @@ class AdminProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  Stream<QuerySnapshot> get hospitalsStream =>
-      _firestore.collection('hospitals').orderBy('createdAt', descending: true).snapshots();
+  Stream<QuerySnapshot> get hospitalsStream => _firestore
+      .collection('hospitals')
+      .orderBy('createdAt', descending: true)
+      .snapshots();
 
-  Stream<QuerySnapshot> get ambulancesStream =>
-      _firestore.collection('ambulances').orderBy('createdAt', descending: true).snapshots();
+  Stream<QuerySnapshot> get ambulancesStream => _firestore
+      .collection('ambulances')
+      .orderBy('createdAt', descending: true)
+      .snapshots();
 
   Future<bool> checkEmailExists(String email) async {
     try {
-      final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+      final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(
+        email,
+      );
       return methods.isNotEmpty;
     } catch (_) {
       return false;
@@ -42,6 +48,7 @@ class AdminProvider extends ChangeNotifier {
     required String phone,
     required String email,
     required String password,
+    String? imageUrl,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -59,10 +66,8 @@ class AdminProvider extends ChangeNotifier {
       final admin = FirebaseAuth.instance.currentUser;
       final adminUid = admin!.uid;
 
-      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      final credential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
       await credential.user!.updateDisplayName(name);
 
       final hospitalId = credential.user!.uid;
@@ -81,9 +86,13 @@ class AdminProvider extends ChangeNotifier {
         email: email,
         password: password,
         adminUid: adminUid,
+        imageUrl: imageUrl,
       );
 
-      await _firestore.collection('hospitals').doc(hospitalId).set(hospital.toMap());
+      await _firestore
+          .collection('hospitals')
+          .doc(hospitalId)
+          .set(hospital.toMap());
 
       await _firestore.collection('users').doc(hospitalId).set({
         'id': hospitalId,
@@ -118,6 +127,7 @@ class AdminProvider extends ChangeNotifier {
     required double longitude,
     required String phone,
     required bool isActive,
+    String? imageUrl,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -135,6 +145,7 @@ class AdminProvider extends ChangeNotifier {
         'longitude': longitude,
         'phone': phone,
         'isActive': isActive,
+        if (imageUrl != null) 'imageUrl': imageUrl,
       });
 
       _isLoading = false;
@@ -178,7 +189,9 @@ class AdminProvider extends ChangeNotifier {
         driverPassword: driverPassword,
       );
 
-      final ref = await _firestore.collection('ambulances').add(ambulanceData.toMap());
+      final ref = await _firestore
+          .collection('ambulances')
+          .add(ambulanceData.toMap());
       final ambulanceId = ref.id;
 
       await _authService.signUp(
@@ -252,10 +265,8 @@ class AdminProvider extends ChangeNotifier {
         return false;
       }
 
-      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      final credential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
       await credential.user!.updateDisplayName(name);
 
       await _firestore.collection('users').doc(credential.user!.uid).set({
@@ -280,7 +291,9 @@ class AdminProvider extends ChangeNotifier {
   }
 
   Future<void> toggleHospitalActive(String hospitalId, bool isActive) async {
-    await _firestore.collection('hospitals').doc(hospitalId).update({'isActive': isActive});
+    await _firestore.collection('hospitals').doc(hospitalId).update({
+      'isActive': isActive,
+    });
   }
 
   Future<bool> deleteHospital(String hospitalId) async {

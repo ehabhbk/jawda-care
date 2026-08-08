@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../providers/admin_provider.dart';
+import '../../widgets/common/hospital_logo.dart';
 import '../../widgets/common/location_picker.dart';
 
 class AddHospitalScreen extends StatefulWidget {
@@ -21,6 +24,8 @@ class _AddHospitalScreenState extends State<AddHospitalScreen> {
   final _passwordCtrl = TextEditingController();
 
   LatLng? _selectedLocation;
+  String? _imageUrl;
+  bool _pickingImage = false;
 
   @override
   void dispose() {
@@ -31,6 +36,37 @@ class _AddHospitalScreenState extends State<AddHospitalScreen> {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickLogo() async {
+    setState(() => _pickingImage = true);
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      final base64 = base64Encode(bytes);
+      if (base64.length > 900000) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('حجم الصورة كبير جداً، اختر صورة أصغر')),
+        );
+        return;
+      }
+      setState(() => _imageUrl = 'data:image/jpeg;base64,$base64');
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('فشل اختيار الصورة')));
+      }
+    } finally {
+      if (mounted) setState(() => _pickingImage = false);
+    }
   }
 
   @override
@@ -45,6 +81,28 @@ class _AddHospitalScreenState extends State<AddHospitalScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Center(
+                child: Column(
+                  children: [
+                    HospitalLogo(imageUrl: _imageUrl, radius: 45),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: _pickingImage ? null : _pickLogo,
+                      icon: _pickingImage
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.image_outlined),
+                      label: Text(
+                        _imageUrl != null ? 'تغيير اللوجو' : 'إضافة لوجو',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _nameCtrl,
                 decoration: const InputDecoration(labelText: 'اسم المستشفى'),
@@ -70,7 +128,9 @@ class _AddHospitalScreenState extends State<AddHospitalScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _emailCtrl,
-                decoration: const InputDecoration(labelText: 'البريد الإلكتروني'),
+                decoration: const InputDecoration(
+                  labelText: 'البريد الإلكتروني',
+                ),
                 keyboardType: TextInputType.emailAddress,
                 validator: (v) => v?.isEmpty == true ? 'مطلوب' : null,
               ),
@@ -79,17 +139,19 @@ class _AddHospitalScreenState extends State<AddHospitalScreen> {
                 controller: _passwordCtrl,
                 decoration: const InputDecoration(labelText: 'كلمة المرور'),
                 obscureText: true,
-                validator: (v) => v != null && v.length < 6 ? '6 أحرف على الأقل' : null,
+                validator: (v) =>
+                    v != null && v.length < 6 ? '6 أحرف على الأقل' : null,
               ),
               const SizedBox(height: 20),
-              LocationPicker(
-                onChanged: (pos) => _selectedLocation = pos,
-              ),
+              LocationPicker(onChanged: (pos) => _selectedLocation = pos),
               const SizedBox(height: 20),
               if (admin.errorMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(admin.errorMessage!, style: const TextStyle(color: Colors.red)),
+                  child: Text(
+                    admin.errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
                 ),
               SizedBox(
                 width: double.infinity,
@@ -97,7 +159,10 @@ class _AddHospitalScreenState extends State<AddHospitalScreen> {
                   onPressed: admin.isLoading ? null : _submit,
                   child: admin.isLoading
                       ? const CircularProgressIndicator()
-                      : const Text('إضافة المستشفى', style: TextStyle(fontSize: 16)),
+                      : const Text(
+                          'إضافة المستشفى',
+                          style: TextStyle(fontSize: 16),
+                        ),
                 ),
               ),
             ],
@@ -131,13 +196,14 @@ class _AddHospitalScreenState extends State<AddHospitalScreen> {
       phone: _phoneCtrl.text,
       email: _emailCtrl.text,
       password: _passwordCtrl.text,
+      imageUrl: _imageUrl,
     );
 
     if (success && mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم إضافة المستشفى بنجاح')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم إضافة المستشفى بنجاح')));
     }
   }
 }

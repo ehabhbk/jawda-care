@@ -5,6 +5,7 @@ import '../../../core/routes/app_routes.dart';
 import '../../../data/models/hospital_model.dart';
 import '../../../data/services/hospital_service.dart';
 import '../../../data/services/location_service.dart';
+import '../../widgets/common/hospital_logo.dart';
 
 class IcuListScreen extends StatefulWidget {
   const IcuListScreen({super.key});
@@ -181,11 +182,7 @@ class _IcuListScreenState extends State<IcuListScreen> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            Icons.local_hospital,
-                            color: Colors.teal,
-                            size: 40,
-                          ),
+                          HospitalLogo(imageUrl: h.imageUrl, radius: 30),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -198,9 +195,38 @@ class _IcuListScreenState extends State<IcuListScreen> {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
+                                if (h.addressAr.isNotEmpty ||
+                                    h.address.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.location_on_outlined,
+                                          size: 15,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          isAr
+                                              ? (h.addressAr.isNotEmpty
+                                                    ? h.addressAr
+                                                    : h.address)
+                                              : h.address,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                                 if (h.cityAr.isNotEmpty ||
                                     h.city.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 2),
                                   Text(
                                     isAr
                                         ? (h.cityAr.isNotEmpty
@@ -211,6 +237,27 @@ class _IcuListScreenState extends State<IcuListScreen> {
                                       fontSize: 12,
                                       color: AppColors.textSecondary,
                                     ),
+                                  ),
+                                ],
+                                if (h.phone.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.phone,
+                                        size: 15,
+                                        color: Colors.teal,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        h.phone,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.teal,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                                 const SizedBox(height: 6),

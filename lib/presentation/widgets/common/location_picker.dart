@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../data/services/location_service.dart';
 
 class LocationPicker extends StatefulWidget {
@@ -115,7 +116,7 @@ class _LocationPickerState extends State<LocationPicker> {
             padding: const EdgeInsets.only(top: 8),
             child: Text(
               'الإحداثيات: ${_selected!.latitude.toStringAsFixed(4)}, ${_selected!.longitude.toStringAsFixed(4)}',
-              style: const TextStyle(color: Colors.grey),
+              style: TextStyle(color: AppColors.textSecondary),
             ),
           ),
       ],
